@@ -1,0 +1,16 @@
+name: Behavior request
+description: Describe behavior for an OpenSpec proposal
+labels: [triage]
+body:
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Requested behavior
+      description: Describe the problem, desired result, and acceptance examples.
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility considerations
+      description: Existing hashes and published protocol bytes cannot change in place.

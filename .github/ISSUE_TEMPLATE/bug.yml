@@ -1,0 +1,25 @@
+name: Bug report
+description: Report a reproducible failure for AI triage and repair
+labels: [triage]
+body:
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Include the input JSON, package version, runtime, OS, and command. Do not include secrets.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: Link an applicable protocol or OpenSpec requirement if known.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include output, error, and reproducibility details.
+    validations:
+      required: true
