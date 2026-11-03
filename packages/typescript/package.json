@@ -1,0 +1,19 @@
+{
+  "name": "xmerkle",
+  "version": "0.1.0",
+  "description": "Deterministic JSON Merkle hashing with custom hash providers",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {".": {"types": "./dist/index.d.ts", "default": "./dist/index.js"}},
+  "bin": {"xmerkle": "./dist/cli.js"},
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test test/*.test.mjs",
+    "prepack": "npm run build"
+  },
+  "engines": {"node": ">=22"},
+  "dependencies": {"canonicalize": "2.1.0", "jsonc-parser": "3.3.1"},
+  "devDependencies": {"@types/node": "22.15.30", "typescript": "5.8.3"}
+}

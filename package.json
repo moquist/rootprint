@@ -1,0 +1,12 @@
+{
+  "name": "xmerkle-workspace",
+  "private": true,
+  "workspaces": ["packages/typescript"],
+  "scripts": {
+    "build": "npm run build --workspace packages/typescript",
+    "test": "npm test --workspace packages/typescript",
+    "check": "npm run build && npm test"
+  },
+  "engines": {"node": ">=22"},
+  "devDependencies": {"@fission-ai/openspec": "1.16.0"}
+}
