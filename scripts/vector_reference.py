@@ -1,6 +1,6 @@
 """Independent fixture oracle: literal scalar bytes, stdlib framing, OpenSSL SHA.
 
-Prints expectations for inspection; never imports either Xmerkle implementation
+Prints expectations for inspection; never imports either Rootprint implementation
 or rewrites committed vectors. Numeric spellings come from RFC 8785 section 3.2.2.3.
 """
 
@@ -36,16 +36,16 @@ def vectors():
     ]
     result = []
     for source, canonical in scalar_cases:
-        preimage = '["xmerkle-v1","value",' + canonical + ']'
+        preimage = '["rootprint-v1","value",' + canonical + ']'
         result.append({"json": source, "preimage": preimage, "digest": sha(preimage)})
 
     def add(source, tag, children):
-        preimage = json.dumps(["xmerkle-v1", tag, children], ensure_ascii=False, separators=(",", ":"))
+        preimage = json.dumps(["rootprint-v1", tag, children], ensure_ascii=False, separators=(",", ":"))
         result.append({"json": source, "preimage": preimage, "digest": sha(preimage)})
         return result[-1]["digest"]
 
     one = result[6]["digest"]
-    two = sha('["xmerkle-v1","value",2]')
+    two = sha('["rootprint-v1","value",2]')
     add("[]", "array", [])
     add("{}", "object", [])
     add("[1,2]", "array", [one, two])
@@ -65,6 +65,12 @@ if __name__ == "__main__":
     if "--check" in sys.argv:
         committed = json.loads((Path(__file__).resolve().parents[1] / "conformance/v1/vectors.json").read_text(encoding="utf-8"))
         assert committed["valid"] == expected
+        custom_preimages = ['["rootprint-v1","value",1]', '["rootprint-v1","value",2]']
+        children = [f"{sum(p.encode('utf-8')) % 256:02x}" for p in custom_preimages]
+        custom_preimages.append(json.dumps(["rootprint-v1", "array", children], separators=(",", ":")))
+        assert committed["custom"]["preimages"] == custom_preimages
+        assert committed["custom"]["digest"] == f"{sum(custom_preimages[-1].encode('utf-8')) % 256:02x}"
         print(f"Verified {len(expected)} committed vectors against literal preimages and OpenSSL")
+        print("Verified sum8 preimages and digest against independent byte sums")
     else:
         print(json.dumps(expected, ensure_ascii=False, indent=2))

@@ -11,7 +11,7 @@ import sys
 import tempfile
 import unittest
 
-from xmerkle import hash_json, hash_value
+from rootprint import hash_json, hash_value
 
 ROOT = Path(__file__).resolve().parents[1]
 NODE = shutil.which("node") or "node"
@@ -26,9 +26,9 @@ def cli_checks(test, commands):
             record = json.loads(result.stdout)
             test.assertEqual(record["digest"], vector["digest"])
             test.assertEqual(record["algorithm"], "sha256")
-            test.assertEqual(record["protocol"], "xmerkle-v1")
+            test.assertEqual(record["protocol"], "rootprint-v1")
             timestamp = datetime.fromisoformat(record["calculatedAt"].replace("Z", "+00:00"))
-            test.assertEqual(record["label"], f"{timestamp:%Y%m%d_%H%M%S}-sha256-{record['digest'][:16]}")
+            test.assertEqual(record["label"], f"{timestamp:%Y%m%d_%H%M%S}-sha256-v1-{record['digest'][:16]}")
             test.assertEqual(result.stderr, b"")
         for raw in [text.encode("utf-8") for text in VECTORS["invalid"]] + [b'"\xff"', b'"\xc0\xaf"']:
             result = subprocess.run(command, input=raw, capture_output=True)
@@ -50,7 +50,7 @@ def cli_checks(test, commands):
 
 class Integration(unittest.TestCase):
     def test_source_clis(self):
-        cli_checks(self, [[NODE, str(ROOT / "packages/typescript/dist/cli.js")], [sys.executable, "-m", "xmerkle"]])
+        cli_checks(self, [[NODE, str(ROOT / "packages/typescript/dist/cli.js")], [sys.executable, "-m", "rootprint"]])
 
     def test_fixed_clock_records_and_generated_nested_inputs(self):
         rng = random.Random(803)

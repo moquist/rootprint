@@ -1,5 +1,5 @@
 {
-  "name": "xmerkle",
+  "name": "rootprint",
   "version": "0.1.0",
   "license": "EPL-2.0",
   "description": "Deterministic JSON Merkle hashing with custom hash providers",
@@ -7,7 +7,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {".": {"types": "./dist/index.d.ts", "default": "./dist/index.js"}},
-  "bin": {"xmerkle": "./dist/cli.js"},
+  "bin": {"rootprint": "./dist/cli.js"},
   "files": ["dist", "src", "README.md", "LICENSE"],
   "scripts": {
     "build": "tsc -p tsconfig.json",

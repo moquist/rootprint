@@ -7,6 +7,15 @@ import { AlgorithmError, InputError, digest, hash, hashJson, sha256 } from "../d
 const vectors = JSON.parse(readFileSync(new URL("../../../conformance/v1/vectors.json", import.meta.url), "utf8"));
 const clock = () => new Date("2026-11-02T09:04:05.987Z");
 
+test("shared fixed-clock records include hashing protocol in labels", () => {
+  const records = JSON.parse(readFileSync(new URL("../../../conformance/v1/records.json", import.meta.url), "utf8"));
+  const providers = { sha256, sum8: { algorithm: "sum8", digestLength: 1,
+    hash: bytes => Uint8Array.of(bytes.reduce((a, b) => a + b, 0) % 256) } };
+  for (const { json, record } of records.cases) {
+    assert.deepEqual(hashJson(json, { provider: providers[record.algorithm], clock: () => new Date(records.instant) }), record);
+  }
+});
+
 test("shared canonical preimages and full digests", () => {
   for (const vector of vectors.valid) {
     let last;
@@ -43,7 +52,7 @@ test("custom providers and invalid configurations", () => {
   } };
   const record = hashJson(vectors.custom.json, { provider, clock });
   assert.equal(record.digest, vectors.custom.digest);
-  assert.equal(record.label, "20261102_090405-sum8-18");
+  assert.equal(record.label, "20261102_090405-sum8-v1-6f");
   assert.deepEqual(calls, vectors.custom.preimages);
   const sha512 = { algorithm: "sha512", digestLength: 64, hash: b => createHash("sha512").update(b).digest() };
   assert.equal(digest(null, sha512).length, 128);
@@ -57,7 +66,7 @@ test("custom providers and invalid configurations", () => {
 test("UTC labels, prefix bounds, collision metadata, and deterministic identity", () => {
   const fixed = { algorithm: "fixed", digestLength: 16, hash: () => Buffer.from("0123456789abcdef0123456789abcdef", "hex") };
   const record = hash(null, { provider: fixed, clock });
-  assert.equal(record.label, "20261102_090405-fixed-0123456789abcdef");
+  assert.equal(record.label, "20261102_090405-fixed-v1-0123456789abcdef");
   assert.equal(record.calculatedAt, "2026-11-02T09:04:05Z");
   assert.equal(hash(null, { provider: fixed, clock, prefixLength: 24 }).label.split("-").at(-1).length, 24);
   assert.equal(hash(null, { clock }).digest, hash(null, { clock: () => new Date("2027-01-01Z") }).digest);

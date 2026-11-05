@@ -23,9 +23,9 @@ The independent libraries consume the same committed vectors. Avoid a native sha
 Define `J(x)` as UTF-8 RFC 8785 serialization and `H` as the selected provider. For every JSON node:
 
 ```text
-scalar(v) = H(J(["xmerkle-v1", "value", v]))
-array(a)  = H(J(["xmerkle-v1", "array", [hex(hash(v)) for v in a]]))
-object(o) = H(J(["xmerkle-v1", "object", [[k, hex(hash(o[k]))] for k in sortedKeys(o)]]))
+scalar(v) = H(J(["rootprint-v1", "value", v]))
+array(a)  = H(J(["rootprint-v1", "array", [hex(hash(v)) for v in a]]))
+object(o) = H(J(["rootprint-v1", "object", [[k, hex(hash(o[k]))] for k in sortedKeys(o)]]))
 ```
 
 `hex` is full lowercase hexadecimal; key comparison uses unsigned UTF-16 code units. Scalars are null, booleans, finite binary64 numbers, and valid Unicode strings. The tags distinguish types and containers, JSON serialization provides unambiguous boundaries, and the version tag permits future protocol evolution. Arrays remain ordered; sorting arrays would silently erase JSON meaning. Object member ordering is canonical at every level.
@@ -52,11 +52,11 @@ Return a record such as:
 
 ```json
 {
-  "protocol": "xmerkle-v1",
+  "protocol": "rootprint-v1",
   "algorithm": "sha256",
   "digest": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
   "calculatedAt": "2026-11-02T09:04:05Z",
-  "label": "20261102_090405-sha256-0123456789abcdef"
+  "label": "20261102_090405-sha256-v1-0123456789abcdef"
 }
 ```
 
@@ -64,11 +64,25 @@ The digest above is illustrative, not a conformance vector. Read the UTC clock o
 
 Both CLIs accept stdin or a file, default SHA-256, and an optional prefix-length argument, emitting exactly this record shape. Keep custom providers in the library API for now; avoid executable plugin resolution from untrusted input.
 
+The `v1` label token is derived from `rootprint-v1`, as specified by
+`version-hash-labels`. Archive bootstrap's baseline capability before that
+modifying change; this reconciliation does not complete any automation tasks.
+
+The owner subsequently approved `rename-rootprint`, including replacing all
+unpublished protocol tags and independently recomputing the changed digests.
+Label formatting alone preserves this renamed protocol's bytes. Reconcile all
+dependent deltas to this baseline before archive so no old identity is restored.
+
 ### 6. Shared expectations, not mutual agreement alone
 
 Vectors include original JSON text, canonical node preimage UTF-8/hex, algorithm, expected full digest, and expected rejection cases. Include RFC numeric boundary vectors, negative zero, escaping, non-BMP versus BMP ordering, composed/decomposed Unicode, reordered object members, ordered arrays, deep nesting, empty containers, and duplicate-name attacks. Independently calculate at least small vectors from literal preimage bytes using platform hashing tools and published RFC examples. Add deterministic fake-provider vectors to expose preimage mistakes without depending on cryptographic collision assumptions.
 
 A six-platform/language CI matrix covers Python and TypeScript on Ubuntu, macOS, and Windows. Use meaningful focused tests plus shared conformance, build/type/static checks, CLI smoke checks, and strict OpenSpec validation. Verify label metadata with a fixed clock so live timestamps cannot make comparisons flaky.
+
+The primary README permanently includes simple usage examples for every
+implementation and copy-and-paste setup/test commands covering all
+implementations, cross-language integration, and installed distributions. Keep
+these current when adding a port or changing test entry points.
 
 ### 7. GitHub is the work ledger; OpenSpec is the behavior contract
 
@@ -106,4 +120,4 @@ Repository creation, Git initialization, credentials, package ownership, license
 
 There is no existing data or API to migrate. Implement locally, verify both ports, then activate on an explicitly selected GitHub repository. Configure required checks and App permissions before enabling worker schedules or merge automation. Validate issue-to-PR-to-merge flow with a small tracked change. Publish only after registry ownership and release identity are configured.
 
-Rollback by disabling agent triggers/merge automation, reverting the faulty change through verified CI, and releasing a new package version if needed. Never change existing `xmerkle-v1` encoding in place or republish a package version with different contents.
+Rollback by disabling agent triggers/merge automation, reverting the faulty change through verified CI, and releasing a new package version if needed. Never change published `rootprint-v1` encoding in place or republish a package version with different contents.

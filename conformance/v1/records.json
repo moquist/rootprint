@@ -1,0 +1,25 @@
+{
+  "instant": "2026-11-02T09:04:05.987Z",
+  "cases": [
+    {
+      "json": "{\"b\":2,\"a\":1}",
+      "record": {
+        "protocol": "rootprint-v1",
+        "algorithm": "sha256",
+        "digest": "d331f806a7ada5308a00a03f350fd885f492ee54ea4d621af24ef45ba9b88559",
+        "calculatedAt": "2026-11-02T09:04:05Z",
+        "label": "20261102_090405-sha256-v1-d331f806a7ada530"
+      }
+    },
+    {
+      "json": "[1,2]",
+      "record": {
+        "protocol": "rootprint-v1",
+        "algorithm": "sum8",
+        "digest": "6f",
+        "calculatedAt": "2026-11-02T09:04:05Z",
+        "label": "20261102_090405-sum8-v1-6f"
+      }
+    }
+  ]
+}

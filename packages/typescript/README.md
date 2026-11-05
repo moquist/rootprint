@@ -1,9 +1,9 @@
-# Xmerkle for TypeScript
+# Rootprint for TypeScript
 
 Node.js 22+. SHA-256 is built in; every Merkle node uses RFC 8785 canonical bytes.
 
 ```js
-import { hash, hashJson, digest } from "xmerkle";
+import { hash, hashJson, digest } from "rootprint";
 
 const record = hash({ b: 2, a: 1 });
 console.log(record.label);   // UTC calculation label with a 16-hex prefix
@@ -16,7 +16,7 @@ Custom provider:
 
 ```js
 import { createHash } from "node:crypto";
-import { hash } from "xmerkle";
+import { hash } from "rootprint";
 
 const provider = {
   algorithm: "sha512",
@@ -31,7 +31,13 @@ only the full root hex. `parseJson` detects duplicate keys; plain `JSON.parse`
 cannot recover duplicates already discarded. Invalid input raises `InputError`;
 invalid providers raise `AlgorithmError`.
 
-CLI after installation: `xmerkle [--prefix-length N] [FILE|-]`. Defaults to
+Labels use `YYYYMMDD_HHMMSS-<algorithm>-v1-<digest-prefix>`: for `{b:2,a:1}`
+at `2026-11-02T09:04:05.987Z`, `20261102_090405-sha256-v1-d331f806a7ada530`.
+The `v1` token identifies `rootprint-v1`, independently of package/transfer versions.
+Label formatting alone never changes full digests or preimages. The pre-publication
+protocol rename intentionally changes prior local roots; recalculate them.
+
+CLI after installation: `rootprint [--prefix-length N] [FILE|-]`. Defaults to
 stdin/SHA-256 and emits one JSON record. In the repository:
 `node packages/typescript/dist/cli.js data.json`.
 

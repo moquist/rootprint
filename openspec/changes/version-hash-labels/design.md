@@ -3,8 +3,9 @@
 ## Context
 
 TypeScript `hash` and Python `hash_value` already return a five-field record
-whose protocol is `xmerkle-v1`. Their label format includes algorithm and prefix
-but omits protocol. `hashJson`/`hash_json` and both CLIs delegate record creation
+whose protocol baseline is now `rootprint-v1`. Their original label format
+included algorithm and prefix but omitted protocol. `hashJson`/`hash_json` and
+both CLIs delegate record creation
 to those constructors. Both conformance suites assert fixed-clock labels;
 `scripts/test_integration.py` checks CLI label shape and cross-language record
 equality, including installed packages through `scripts/package_check.py`.
@@ -35,7 +36,7 @@ YYYYMMDD_HHMMSS-<algorithm>-v1-<digest-prefix>
 20261102_090405-sha256-v1-0123456789abcdef
 ```
 
-Derive `v1` from the known `xmerkle-v1` protocol identity in each library's
+Derive `v1` from the known `rootprint-v1` protocol identity in each library's
 record-construction path, rather than duplicating label formatting in the CLI.
 Keep the existing `protocol` field authoritative; adding a redundant record field
 or a separate formatter framework is unnecessary. Algorithm identifiers already
@@ -57,9 +58,10 @@ needed: neither package is published and neither library currently parses labels
 | Future synchronization version/profile | Transfer encoding, chunking, manifests, and exchange rules |
 
 The full content identity stays `(protocol, algorithm, digest)`. Changing the
-label alone never changes a root. Rebranding the product does not justify
-changing `xmerkle-v1` preimage tags. Changes to node encoding, canonicalization,
-or root-affecting chunk layout require a different hashing protocol, and any
+label alone never changes a root. The owner separately approved changing the
+unpublished preimage tags through `rename-rootprint`, establishing `rootprint-v1`
+and independently recomputed vectors as the baseline. Changes to node encoding,
+canonicalization, or root-affecting chunk layout require a different hashing protocol, and any
 root-affecting options must be fixed by that protocol or identified alongside it.
 
 Protocol negotiation will be a future synchronization concern. Different
@@ -88,7 +90,7 @@ A candidate byte representation is RFC 8785 canonical UTF-8 for the entire JSON
 document. Content-defined boundaries can retain matching chunks after an
 insertion where fixed offsets would shift. Those bytes are a transfer object,
 not a replacement for the recursive Merkle construction. Reassembly and
-recalculation of the target `xmerkle-v1` root remain the final acceptance check.
+recalculation of the target `rootprint-v1` root remain the final acceptance check.
 
 Transfer-side chunking can evolve independently because it does not enter the
 content root. If chunking is later part of the committed tree itself, it becomes
@@ -112,7 +114,8 @@ library or speculative transport abstraction is added by this change.
 Add shared fixed-clock record expectations for SHA-256 and the existing `sum8`
 test provider. Both language suites consume them and check exact protocol token,
 full digest, timestamp, default prefix, and custom-provider behavior. Existing
-preimage/digest fixtures remain byte-for-byte unchanged.
+preimage/digest fixtures remain byte-for-byte unchanged by label formatting alone;
+the separately approved protocol rename intentionally recomputes those fixtures.
 
 Update fixed-clock label assertions and the common CLI helper in
 `scripts/test_integration.py`, which also checks installed distributions. Keep
@@ -129,7 +132,7 @@ or dependency is required.
   changes; archive the baseline before this modifying delta. Preserve unrelated
   incomplete automation tasks.
 - A visible version could be mistaken for selectable v2 support → State that
-  only `xmerkle-v1` is implemented and derive the token from that identity.
+  only `rootprint-v1` is implemented and derive the token from that identity.
 - Transfer manifests may exceed small input sizes → Document the whole-document
   fallback and cost measurements required before implementing synchronization.
 
@@ -141,6 +144,8 @@ direction in its design note and the local ledger without claiming synchronizati
 is operational. Validate all active OpenSpec changes and run integrated/package
 checks before committing implementation.
 
-No content data migration is needed: existing full roots and preimages remain
-valid. If reverting, restore the old label formatting in both ports and tests;
-never change protocol bytes merely to roll back a display-format change.
+No content data migration is needed for label formatting alone: full roots and
+preimages remain valid under the same protocol. The separate, owner-approved
+pre-publication protocol rename requires local roots to be recalculated. If
+reverting labels, restore formatting in both ports and tests; never change
+protocol bytes merely to roll back a display-format change.

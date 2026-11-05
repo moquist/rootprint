@@ -1,9 +1,9 @@
-# Xmerkle for Python
+# Rootprint for Python
 
 Requires Python 3.11+. Every Merkle node uses RFC 8785 canonical bytes.
 
 ```python
-from xmerkle import digest, hash_json, hash_value
+from rootprint import digest, hash_json, hash_value
 
 record = hash_value({"b": 2, "a": 1})
 print(record["label"])   # UTC calculation label with a 16-hex prefix
@@ -16,7 +16,7 @@ Custom provider:
 
 ```python
 import hashlib
-from xmerkle import HashProvider, hash_value
+from rootprint import HashProvider, hash_value
 
 provider = HashProvider("sha512", 64, lambda data: hashlib.sha512(data).digest())
 print(hash_value([1, 2], provider=provider, prefix_length=24))
@@ -27,8 +27,14 @@ reproducibility. `digest` returns full root hex. `parse_json` rejects duplicate
 keys; ordinary `json.loads` cannot recover duplicates already discarded.
 `InputError` and `AlgorithmError` subclass `ValueError`.
 
-CLI after installation: `xmerkle [--prefix-length N] [FILE|-]`, also available
-through `python -m xmerkle`. Defaults to stdin/SHA-256; emits one JSON record.
+Labels use `YYYYMMDD_HHMMSS-<algorithm>-v1-<digest-prefix>`: for `{"b":2,"a":1}`
+at `2026-11-02T09:04:05.987Z`, `20261102_090405-sha256-v1-d331f806a7ada530`.
+The `v1` token identifies `rootprint-v1`, independently of package/transfer versions.
+Label formatting alone never changes full digests or preimages. The pre-publication
+protocol rename intentionally changes prior local roots; recalculate them.
+
+CLI after installation: `rootprint [--prefix-length N] [FILE|-]`, also available
+through `python -m rootprint`. Defaults to stdin/SHA-256; emits one JSON record.
 
 Numbers (including Python integers) normalize to finite binary64, so large
 integers can round. Encode exact arbitrary-precision data as strings. Only native

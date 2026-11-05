@@ -4,13 +4,22 @@ import json
 from pathlib import Path
 import unittest
 
-from xmerkle import AlgorithmError, HashProvider, InputError, SHA256, digest, hash_json, hash_value
+from rootprint import AlgorithmError, HashProvider, InputError, SHA256, digest, hash_json, hash_value
 
 VECTORS = json.loads((Path(__file__).resolve().parents[3] / "conformance/v1/vectors.json").read_text(encoding="utf-8"))
 INSTANT = datetime(2026, 11, 2, 9, 4, 5, 987000, tzinfo=timezone.utc)
 
 
 class Conformance(unittest.TestCase):
+    def test_shared_fixed_clock_records(self):
+        records = json.loads((Path(__file__).resolve().parents[3] / "conformance/v1/records.json").read_text(encoding="utf-8"))
+        instant = datetime.fromisoformat(records["instant"].replace("Z", "+00:00"))
+        providers = {"sha256": SHA256, "sum8": HashProvider("sum8", 1, lambda data: bytes([sum(data) % 256]))}
+        for case in records["cases"]:
+            with self.subTest(algorithm=case["record"]["algorithm"]):
+                self.assertEqual(hash_json(case["json"], provider=providers[case["record"]["algorithm"]],
+                                           clock=lambda: instant), case["record"])
+
     def test_shared_vectors(self):
         for vector in VECTORS["valid"]:
             with self.subTest(source=vector["json"]):
@@ -54,7 +63,7 @@ class Conformance(unittest.TestCase):
 
         record = hash_json(VECTORS["custom"]["json"], provider=HashProvider("sum8", 1, sum8), clock=lambda: INSTANT)
         self.assertEqual(record["digest"], VECTORS["custom"]["digest"])
-        self.assertEqual(record["label"], "20261102_090405-sum8-18")
+        self.assertEqual(record["label"], "20261102_090405-sum8-v1-6f")
         self.assertEqual(calls, VECTORS["custom"]["preimages"])
         self.assertEqual(len(digest(None, HashProvider("sha512", 64, lambda b: hashlib.sha512(b).digest()))), 128)
         for provider in [HashProvider("sha-256", 1, sum8), HashProvider("ok", 0, sum8),
@@ -72,7 +81,7 @@ class Conformance(unittest.TestCase):
     def test_records(self):
         fixed = HashProvider("fixed", 16, lambda _: bytes.fromhex("0123456789abcdef0123456789abcdef"))
         record = hash_value(None, provider=fixed, clock=lambda: INSTANT)
-        self.assertEqual(record["label"], "20261102_090405-fixed-0123456789abcdef")
+        self.assertEqual(record["label"], "20261102_090405-fixed-v1-0123456789abcdef")
         self.assertEqual(record["calculatedAt"], "2026-11-02T09:04:05Z")
         local = INSTANT.astimezone(timezone(timedelta(hours=-7)))
         self.assertEqual(record, hash_value(None, provider=fixed, clock=lambda: local))

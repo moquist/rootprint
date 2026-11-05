@@ -10,7 +10,7 @@ import re
 
 import rfc8785
 
-PROTOCOL = "xmerkle-v1"
+PROTOCOL = "rootprint-v1"
 
 
 class InputError(ValueError):
@@ -139,7 +139,7 @@ def hash_value(value, *, provider: HashProvider = SHA256, prefix_length: int | N
         "algorithm": provider.algorithm,
         "digest": full,
         "calculatedAt": now.isoformat(timespec="seconds").replace("+00:00", "Z"),
-        "label": f"{date}_{time}-{provider.algorithm}-{full[:length]}",
+        "label": f"{date}_{time}-{provider.algorithm}-{PROTOCOL.removeprefix('rootprint-')}-{full[:length]}",
     }
 
 

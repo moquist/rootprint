@@ -3,7 +3,7 @@ requires = ["setuptools==80.9.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "xmerkle"
+name = "rootprint"
 version = "0.1.0"
 description = "Deterministic JSON Merkle hashing with custom hash providers"
 readme = "README.md"
@@ -13,7 +13,7 @@ requires-python = ">=3.11"
 dependencies = ["rfc8785==0.1.4"]
 
 [project.scripts]
-xmerkle = "xmerkle.__main__:main"
+rootprint = "rootprint.__main__:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

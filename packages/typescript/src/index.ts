@@ -4,7 +4,7 @@ import { parseTree, type Node, type ParseError } from "jsonc-parser";
 
 // canonicalize's CJS export has a callable default at runtime.
 const canonicalize = canonicalizeModule as unknown as (value: unknown) => string;
-export const PROTOCOL = "xmerkle-v1";
+export const PROTOCOL = "rootprint-v1";
 export class InputError extends Error {}
 export class AlgorithmError extends Error {}
 
@@ -141,7 +141,7 @@ export function hash(value: unknown, options: HashOptions = {}): HashRecord {
   const date = calculatedAt.slice(0, 10).replaceAll("-", "");
   const time = calculatedAt.slice(11, 19).replaceAll(":", "");
   return { protocol: PROTOCOL, algorithm: provider.algorithm, digest: full, calculatedAt,
-    label: `${date}_${time}-${provider.algorithm}-${full.slice(0, length)}` };
+    label: `${date}_${time}-${provider.algorithm}-${PROTOCOL.slice("rootprint-".length)}-${full.slice(0, length)}` };
 }
 
 export function hashJson(text: string, options: HashOptions = {}): HashRecord {

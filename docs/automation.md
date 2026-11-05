@@ -73,7 +73,7 @@ identity before enabling releases.
 
 The specified release integration creates a version/release-note PR, merges it
 through normal gates, builds both distributions from the verified default-branch
-revision, and publishes once. Package versions are independent of `xmerkle-v1`.
+revision, and publishes once. Package versions are independent of `rootprint-v1`.
 Record partial failures and retry only missing registry artifacts. Never
 overwrite an existing version or change published protocol bytes in place.
 

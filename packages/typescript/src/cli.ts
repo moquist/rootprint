@@ -9,7 +9,7 @@ try {
     allowPositionals: true,
   });
   if (values.help) {
-    console.log("Usage: xmerkle [--prefix-length N] [FILE|-]\nHash strict UTF-8 JSON. Default: stdin, SHA-256.");
+    console.log("Usage: rootprint [--prefix-length N] [FILE|-]\nHash strict UTF-8 JSON. Default: stdin, SHA-256.");
   } else {
     if (positionals.length > 1) throw new Error("Expected at most one file");
     const rawLength = values["prefix-length"];
@@ -20,6 +20,6 @@ try {
     console.log(JSON.stringify(hashJson(text, { prefixLength: rawLength === undefined ? undefined : Number(rawLength) })));
   }
 } catch (error) {
-  console.error(`xmerkle: ${error instanceof Error ? error.message : "Calculation failed"}`);
+  console.error(`rootprint: ${error instanceof Error ? error.message : "Calculation failed"}`);
   process.exitCode = 1;
 }

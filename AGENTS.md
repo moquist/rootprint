@@ -1,4 +1,4 @@
-# Xmerkle agent contract
+# Rootprint agent contract
 
 All project code, tests, and maintenance changes are AI-authored. People provide
 requirements, clarify decisions, and provision accounts; manual code editing and
@@ -14,14 +14,28 @@ routine human PR approval must not be required.
    phase. Fixing an existing requirement does not invent a new requirement.
    Material ambiguity becomes a question in the issue or local work record.
 4. Implement the smallest complete fix. Keep both ports and shared vectors
-   compatible. Never change `xmerkle-v1` bytes in place after publication.
+   compatible. Never change `rootprint-v1` bytes in place after publication.
 5. Run the relevant tests and `python3 scripts/check.py` for integrated changes.
    Mark tasks complete only after their stated verification actually passes.
-   Commit verified changes as you go, staging only intended files.
+   Always commit verified changes as you go, staging only intended files. The
+   owner grants standing authorization for local commits on every task; do not
+   ask for repeated commit approval or finish with uncommitted agent changes.
 6. Obtain independent automated review before remote merging. Archive/sync
    completed OpenSpec changes through the archive workflow, then verify specs.
 
+## Permanent README requirements
+
+The primary `README.md` must contain simple usage examples for every
+implementation and copy-and-pasteable setup and commands to run all tests across
+all implementations, including cross-language integration and packaged CLI
+checks. Keep these examples current whenever implementations or test commands
+change.
+
 ## Local operation
+
+Optimize for AI automation and effective human attention. Routine implementation,
+verification, and local commits are agent responsibilities; involve people for
+requirements, material ambiguity, and account-owner decisions.
 
 Use `docs/local-work.md` as the durable ledger while GitHub is unavailable.
 Record failures, decisions, evidence, and remaining activation requirements.

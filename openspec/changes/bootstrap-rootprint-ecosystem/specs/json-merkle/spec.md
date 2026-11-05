@@ -29,7 +29,7 @@ Objects SHALL be treated as key/value pairs sorted lexicographically by unsigned
 - **THEN** their original code points are preserved in hashing rather than normalized
 
 ### Requirement: Recursive Merkle encoding
-Protocol `xmerkle-v1` SHALL hash each node as UTF-8 RFC 8785 encoding of its tagged representation. Scalars use `["xmerkle-v1","value",value]`; arrays use `["xmerkle-v1","array",childDigests]`; objects use `["xmerkle-v1","object",sortedPairs]`. Child digests SHALL be full lowercase hex strings, and each sorted pair SHALL be `[key,childDigest]`.
+Protocol `rootprint-v1` SHALL hash each node as UTF-8 RFC 8785 encoding of its tagged representation. Scalars use `["rootprint-v1","value",value]`; arrays use `["rootprint-v1","array",childDigests]`; objects use `["rootprint-v1","object",sortedPairs]`. Child digests SHALL be full lowercase hex strings, and each sorted pair SHALL be `[key,childDigest]`.
 
 #### Scenario: Nested data hashes recursively
 - **WHEN** an object contains an array of scalar and object values

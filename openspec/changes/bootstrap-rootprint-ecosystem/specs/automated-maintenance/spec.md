@@ -17,6 +17,17 @@ Repository agent instructions SHALL require applicable OpenSpec requirements bef
 - **WHEN** an issue reports behavior already covered by a specification
 - **THEN** the agent references that contract, demonstrates a failing regression check, and verifies the fix without inventing a new requirement
 
+### Requirement: Primary README usage and test examples
+The primary repository README SHALL permanently contain simple usage examples for every implementation and a copy-and-pasteable example of running all tests across all implementations, including required setup, cross-language integration, and packaged CLI checks. Maintenance changes SHALL keep these examples current as implementations and test commands evolve.
+
+#### Scenario: Use and verify the implementations
+- **WHEN** a reader follows the primary README from a clean checkout with the documented runtimes
+- **THEN** they can run a simple example for each implementation and execute all implementations' tests using the supplied commands
+
+#### Scenario: Add an implementation or change test commands
+- **WHEN** maintenance adds an implementation or changes how its tests run
+- **THEN** the same change updates the primary README usage and all-tests examples
+
 ### Requirement: Automated issue lifecycle
 GitHub automation SHALL triage new and reopened issues, detect likely duplicates, request missing reproduction details where needed, and enqueue actionable issues for OpenCode. It SHALL record durable issue status and link fixes to their source issues. Unresolved ambiguity SHALL produce an issue question rather than an invented behavioral decision.
 

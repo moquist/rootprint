@@ -7,18 +7,18 @@ Represent hash calculations with recognizable UTC labels while preserving comple
 ## ADDED Requirements
 
 ### Requirement: Complete hash record
-A successful calculation SHALL return `protocol`, `algorithm`, `digest`, `calculatedAt`, and `label`. Protocol SHALL be `xmerkle-v1`; digest SHALL be the full lowercase hexadecimal root digest. Deterministic identity SHALL consist of protocol, algorithm, and full digest, never the label alone.
+A successful calculation SHALL return `protocol`, `algorithm`, `digest`, `calculatedAt`, and `label`. Protocol SHALL be `rootprint-v1`; digest SHALL be the full lowercase hexadecimal root digest. Deterministic identity SHALL consist of protocol, algorithm, and full digest, never the label alone.
 
 #### Scenario: Same content calculated twice
 - **WHEN** the same value and provider are used at two different times
 - **THEN** protocol, algorithm, and full digest match while calculation metadata can differ
 
 ### Requirement: UTC calculation label
-Labels SHALL use `YYYYMMDD_HHMMSS-<hash-algorithm>-<shortened-hash>`. The timestamp SHALL be the UTC root-calculation completion time truncated to seconds. `calculatedAt` SHALL represent the same instant as `YYYY-MM-DDTHH:MM:SSZ`. Years SHALL use four digits in the range 0001–9999. An injectable clock SHALL support reproducible checks.
+Labels SHALL use `YYYYMMDD_HHMMSS-<hash-algorithm>-<protocol-version>-<shortened-hash>`. The timestamp SHALL be the UTC root-calculation completion time truncated to seconds. `calculatedAt` SHALL represent the same instant as `YYYY-MM-DDTHH:MM:SSZ`. Years SHALL use four digits in the range 0001–9999. An injectable clock SHALL support reproducible checks. Protocol `rootprint-v1` SHALL use the label token `v1`.
 
 #### Scenario: Format a known instant
 - **WHEN** SHA-256 calculation completes at `2026-11-02T09:04:05.987Z` with a digest starting `0123456789abcdef`
-- **THEN** its default label is `20261102_090405-sha256-0123456789abcdef` and calculatedAt is `2026-11-02T09:04:05Z`
+- **THEN** its default label is `20261102_090405-sha256-v1-0123456789abcdef` and calculatedAt is `2026-11-02T09:04:05Z`
 
 #### Scenario: Local timezone differs
 - **WHEN** calculations complete at the same instant in hosts with different local timezones
