@@ -1,8 +1,8 @@
-# Xmerkle
+# Rootprint
 
-Deterministic, versioned Merkle hashing for JSON, with bring-your-own hash
-functions. Initial implementations: **TypeScript and Python**. Rust is planned
-after these implementations pass the same conformance vectors.
+Rootprint provides deterministic, versioned Merkle hashing for JSON, with
+bring-your-own hash functions. Initial implementations: **TypeScript and Python**.
+Rust is planned after these implementations pass the same conformance vectors.
 
 - Objects sort by RFC 8785 UTF-16 key order; arrays preserve order.
 - Numbers use finite IEEE-754 binary64 semantics (not exact arbitrary precision).

@@ -17,6 +17,7 @@ routine human PR approval must not be required.
    compatible. Never change `xmerkle-v1` bytes in place after publication.
 5. Run the relevant tests and `python3 scripts/check.py` for integrated changes.
    Mark tasks complete only after their stated verification actually passes.
+   Commit verified changes as you go, staging only intended files.
 6. Obtain independent automated review before remote merging. Archive/sync
    completed OpenSpec changes through the archive workflow, then verify specs.
 
