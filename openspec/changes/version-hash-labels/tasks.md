@@ -13,7 +13,7 @@
 
 ## 3. Integrated acceptance
 
-- [ ] 3.1 Run `.venv/bin/python scripts/check.py`, `.venv/bin/python scripts/package_check.py`, and strict validation for all active changes; verify both ports and packaged CLIs generate the new label shape, label formatting alone preserves all renamed-protocol digest/preimage expectations, no synchronization feature is falsely reported active, and verified changes are committed.
+- [x] 3.1 Run `.venv/bin/python scripts/check.py`, `.venv/bin/python scripts/package_check.py`, and strict validation for all active changes; verify both ports and packaged CLIs generate the new label shape, label formatting alone preserves all renamed-protocol digest/preimage expectations, no synchronization feature is falsely reported active, and verified changes are committed.
 
 ## Workflow follow-up
 

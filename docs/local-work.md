@@ -119,7 +119,10 @@ ownership and publishing identity are separate release prerequisites.
   task. Always commit verified agent changes without repeated approval requests;
   preserve human attention for requirements, material ambiguity, and account-owner
   decisions. Recorded permanently in `AGENTS.md`.
-- Completion order: commit the verified rename/label implementation, then record
-  its commit and complete the label change's final checkbox in a follow-up
-  documentation commit. Remote merge still requires independent automated review
-  and current-head CI; no push or publication is authorized or performed.
+- Commit evidence: `fad5bd5` commits the verified rename/label implementation,
+  README examples and test commands, synchronization design, and permanent agent
+  instructions. The label change's final commit condition is now met; both
+  rename and label changes have 6/6 tracked tasks complete. This follow-up records
+  completion after the implementation commit actually succeeded. Remote merge
+  still requires independent automated review and current-head CI; no push or
+  publication is authorized or performed.
