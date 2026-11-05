@@ -1,6 +1,7 @@
 {
   "name": "xmerkle-workspace",
   "private": true,
+  "license": "EPL-2.0",
   "workspaces": ["packages/typescript"],
   "scripts": {
     "build": "npm run build --workspace packages/typescript",

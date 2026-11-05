@@ -67,8 +67,9 @@ deduplicate rather than opening one issue per repeated CI failure.
 ## Releases and rollback
 
 Current local package checks build and install both distributions:
-`python scripts/package_check.py`. This is not publication. Select the license,
-npm/PyPI ownership, and publishing identity before enabling releases.
+`python scripts/package_check.py`. This is not publication. EPL-2.0 is selected
+and included in both distributions. Configure npm/PyPI ownership and publishing
+identity before enabling releases.
 
 The specified release integration creates a version/release-note PR, merges it
 through normal gates, builds both distributions from the verified default-branch

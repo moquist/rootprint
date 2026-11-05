@@ -26,8 +26,8 @@ The checker uses its own Python interpreter for Python package checks.
 
 See [protocol](docs/protocol.md), [verification](docs/verification.md), and
 [local work ledger](docs/local-work.md). The project is under initial
-implementation; no packages have been published. A license has not yet been
-selected, so publication is not enabled.
+implementation; no packages have been published. Publication awaits registry
+setup and verified release automation.
 
 ## AI-driven development
 
@@ -42,3 +42,8 @@ Run `python scripts/activation.py` for outstanding requirements. See
 [automation activation](docs/automation.md): pushing enables CI, but the remaining
 agent/reviewer/merge/release integrations still need implementation and live
 verification.
+
+## License
+
+Rootprint is licensed under the [Eclipse Public License 2.0](LICENSE)
+(`EPL-2.0`). Both language packages include the license text and source code.

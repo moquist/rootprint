@@ -37,4 +37,6 @@ subclasses and custom serializers are not used. Arrays retain order and object
 keys sort by unsigned UTF-16 units. Strings are not normalized. Nesting is limited
 to 256 container edges. Full identity is protocol + algorithm + full digest;
 labels may collide and are not identity or authenticated time.
-This package is not yet published; project license selection is pending.
+Licensed under the Eclipse Public License 2.0 (`EPL-2.0`); the distribution
+includes the license text and Python source under the same license.
+This package is not yet published.

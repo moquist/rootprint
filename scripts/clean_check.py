@@ -22,7 +22,7 @@ def main():
         ignore = shutil.ignore_patterns("node_modules", "dist", "build", "__pycache__", "*.egg-info")
         for directory in ["packages", "conformance", "scripts", "openspec", "docs", ".github"]:
             shutil.copytree(ROOT / directory, target / directory, ignore=ignore)
-        for file in ["package.json", "package-lock.json", "requirements-dev.txt", "README.md", "AGENTS.md", ".gitignore"]:
+        for file in ["package.json", "package-lock.json", "requirements-dev.txt", "README.md", "AGENTS.md", ".gitignore", "LICENSE"]:
             shutil.copy2(ROOT / file, target / file)
 
         def run(*command):

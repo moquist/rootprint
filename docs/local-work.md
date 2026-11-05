@@ -14,6 +14,9 @@
 - Git: initialized locally on `main` at the owner's request. Initial history
   separates the OpenSpec/agent foundation, both language implementations and
   conformance checks, and CI/activation preparation. No remote is configured.
+- License: the owner selected Eclipse Public License 2.0 (`EPL-2.0`). Root and
+  package license copies are included; distribution checks verify license
+  metadata, identical license text, and included sources.
 
 ## Remote activation debt
 
@@ -22,7 +25,7 @@ hosted Windows/macOS validation, independent PR review, or enforced merge gate.
 The local ledger and Linux checks cover development evidence, not those services.
 No scheduled local agent daemon is running.
 
-Before activating: choose repository visibility and license, install a scoped
+Before activating: choose repository visibility, install a scoped
 GitHub App, configure model access and an isolated worker, configure required
 checks with no bypass, and verify a controlled issue-to-merge run. Registry
 ownership and publishing identity are separate release prerequisites.

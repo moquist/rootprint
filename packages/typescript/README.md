@@ -40,4 +40,6 @@ objects sort by UTF-16 keys, and strings are not normalized. Input nesting is
 limited to 256 container edges. Only plain objects and dense arrays with ordinary
 enumerable data properties are supported. Full identity is protocol + algorithm
 + full digest. Labels may collide and are never identity or authenticated time.
-Package publication and a project license are pending.
+Licensed under the Eclipse Public License 2.0 (`EPL-2.0`); see `LICENSE`.
+Source code is included in the package's `src/` directory under the same license.
+Package publication is pending.
