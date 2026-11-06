@@ -21,3 +21,11 @@
 - The owner performs every push; agents prepare local changes/commits and owner-run commands only.
 - Archive/synchronize the bootstrap maintenance baseline before this additive delta, and only after this change's own verification is complete.
 - Keep automatic merging disabled during the owner-controlled manual-merge rollout.
+
+## Deployment evidence — 2026-11-06
+
+- Owner rebase-merged https://github.com/moquist/rootprint/pull/8 at `ecbce4f`.
+- Reviewer App approved its exact head: https://github.com/moquist/rootprint/actions/runs/42171395028. Two earlier HTTP 429 failures were resolved after the owner added OpenAI credits.
+- Implementation rebased onto that base; runtime/policy/test bytes remain identical to the verified original. SSH fetch failed (publickey); authenticated HTTPS fetch succeeded without changing remote configuration.
+- Further handoff evidence lives here to avoid adding the large ledger's baseline to this PR. Task 3.2 remains open; no agent push or merge occurred.
+- Rebased verification passes: both ports, 29 script tests, Ruff, strict specs, and diff checks. Deployed-reviewer replay fits 600,000 bytes with a 2,048-byte discussion allowance; exact size is recorded in the verification commit.
