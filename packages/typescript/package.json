@@ -15,6 +15,6 @@
     "prepack": "npm run build"
   },
   "engines": {"node": ">=22"},
-  "dependencies": {"canonicalize": "2.1.0", "jsonc-parser": "3.3.1"},
+  "dependencies": {"canonicalize": "5.1.0", "jsonc-parser": "3.3.1"},
   "devDependencies": {"@types/node": "22.15.30", "typescript": "5.8.3"}
 }
