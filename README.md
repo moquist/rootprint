@@ -79,7 +79,33 @@ See [reviewer setup and check attribution](docs/independent-review.md).
 Run setup above first. Packages are not yet published, so these examples use the
 local TypeScript workspace and editable Python installation.
 
-### TypeScript / Node.js
+### Hash JSON from stdin (CLI)
+
+TypeScript / Node.js:
+
+```sh
+printf '%s\n' '{"b":2,"a":1}' | node packages/typescript/dist/cli.js --prefix-length 24
+```
+
+Python:
+
+```sh
+printf '%s\n' '{"b":2,"a":1}' | .venv/bin/python -m rootprint --prefix-length 24
+```
+
+Each command writes one JSON hash record to stdout. Its `digest` is the full
+SHA-256 Merkle root:
+`d331f806a7ada5308a00a03f350fd885f492ee54ea4d621af24ef45ba9b88559`.
+`--prefix-length 24` shortens only the display label's digest prefix, never the
+full `digest`. The CLI uses the current UTC clock, so `calculatedAt` and the
+label's timestamp vary with calculation time; they do not affect the root.
+
+Both CLIs also accept a JSON file. After installing either built distribution,
+the command is `rootprint [--prefix-length N] [FILE|-]` (stdin by default).
+
+### Secondary examples: library APIs
+
+#### TypeScript / Node.js
 
 ```sh
 node --input-type=module -e '
@@ -92,7 +118,7 @@ if (hashJson("{\"a\":1,\"b\":2}").digest !== record.digest) throw Error("digest 
 '
 ```
 
-### Python
+#### Python
 
 ```sh
 .venv/bin/python -c '
@@ -105,19 +131,11 @@ assert hash_json("{\"a\":1,\"b\":2}")["digest"] == record["digest"]
 '
 ```
 
-Both examples produce full SHA-256 digest
+Both API examples use a fixed clock and produce full SHA-256 digest
 `d331f806a7ada5308a00a03f350fd885f492ee54ea4d621af24ef45ba9b88559`
 and label `20261102_090405-sha256-v1-d331f806a7ada530`.
 
-Both CLIs accept a JSON file or stdin (timestamps use the current UTC clock):
-
-```sh
-printf '%s\n' '{"b":2,"a":1}' | node packages/typescript/dist/cli.js --prefix-length 24
-printf '%s\n' '{"b":2,"a":1}' | .venv/bin/python -m rootprint --prefix-length 24
-```
-
-After installing either built distribution, the command is
-`rootprint [--prefix-length N] [FILE|-]`. More API and custom-provider examples:
+More API and custom-provider examples:
 [TypeScript](packages/typescript/README.md), [Python](packages/python/README.md).
 
 ## Protocol, versions, and status
