@@ -7,8 +7,9 @@ Start with AI-prepared PRs that you merge manually after the required checks
 pass. Enable automatic merging later, when you are comfortable with the flow.
 This is a staged rollout toward the specified fully automated workflow.
 
-The repository already contains CI and issue forms. The issue worker, independent
-reviewer, and merge integration still need implementation and live verification.
+The repository contains CI, issue forms, and an issue worker that is disabled by
+default and still needs controlled hosted verification. The independent reviewer
+and merge integration still need implementation and live verification.
 
 ## Rollout stages
 
@@ -109,16 +110,29 @@ credential out of the implementation worker.
 
 Provision model access and a spending limit for the trusted orchestration
 service. Installing Apps and provisioning credentials are account-owner setup
-steps; the worker and reviewer integrations themselves still need implementation.
+steps. The worker uses OpenAI **GPT-6.1 Sol** (`openai/gpt-6.1-sol`). Store the
+provider credential as Actions secret **`OPENAI_API_KEY`**, the implementation
+App's PEM as **`IMPLEMENTATION_APP_PRIVATE_KEY`**, and its App ID as Actions
+variable **`IMPLEMENTATION_APP_ID`**. The worker does not receive the reviewer
+App's credential. See [the worker guide](docs/issue-worker.md) for the complete
+setup and execution boundary.
 
-## 5. Implement the issue worker
+## 5. Configure the issue worker
 
 Use the existing forms in `.github/ISSUE_TEMPLATE/` for bugs and new requirements.
-Implement trusted orchestration for:
+The included `.github/workflows/issue-worker.yml` provides trusted orchestration
+for:
 
 - New and reopened issues: triage and likely-duplicate detection.
 - Issue edits and relevant comments: resume when missing information arrives.
 - Scheduled reconciliation: recover missed events and interrupted work.
+
+Keep the Actions variable **`ISSUE_WORKER_ENABLED`** unset or `false` until you
+are ready for the controlled run. Set it to `true` to enable triage and
+reconciliation; implementation still requires your `ready` label. The workflow
+builds a credential-free container and checks isolation, the OpenCode/MCP
+connection, and offline baseline tests before supplying worker credentials.
+GitHub App/API access and real OpenAI model access require live verification.
 
 The intended flow is:
 

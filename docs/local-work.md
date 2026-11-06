@@ -64,9 +64,10 @@ ownership and publishing identity are separate release prerequisites.
 ## Remaining work
 
 - CI workflow is written and linted, but its live matrix is unverified (task 4.1).
-- Issue forms and operating contract are prepared. Agent orchestration, durable
-  attempt accounting, failure tracking, independent review, automatic merging,
-  and publishing still require implementation and live verification (groups 5–7).
+- Issue-worker orchestration, durable attempt accounting, and failure tracking
+  are implemented locally; controlled hosted acceptance remains pending (group 5).
+  Independent review, automatic merging, and publishing still require
+  implementation and live verification (groups 6–7).
 - No remote activation acceptance run has occurred (task 8.1). Pushing alone
   enables the prepared CI, not the missing worker/review/merge integrations.
 - Do not archive bootstrap or claim autonomous maintenance is complete.
@@ -78,12 +79,67 @@ ownership and publishing identity are separate release prerequisites.
 - Initial rollout: owner-selected `ready` issues, AI-prepared PRs, manual merging,
   and required CI plus independent automated review. Automatic merging remains a
   later activation step, as described in `github-automation-setup-instructions.md`.
-- Implementation is awaiting an account-owner decision on the LLM provider and
-  model, plus the name of the Actions secret containing its API credential.
-  No credential values should be supplied in conversation or committed.
+- The owner selected OpenAI GPT-6.1 Sol (`openai/gpt-6.1-sol`) and the Actions
+  secret name `OPENAI_API_KEY`. No credential values were supplied in conversation
+  or committed.
 - App installation, stored credentials, hosted execution, and sandbox isolation
-  have not been inspected or verified. No worker is active and no bootstrap task
-  is newly complete. No remote changes are authorized by this intake.
+  had not been inspected or verified at intake. No remote changes were authorized
+  by that intake.
+
+### Issue worker implementation and local verification
+
+- Implemented `.github/workflows/issue-worker.yml`, trusted stdlib Python App/API
+  orchestration, durable App-authored issue state, bounded retries and run links,
+  per-issue concurrency, event/scheduled reconciliation, PR publication recovery,
+  default-branch CI failure deduplication, and manual-merge outcome recording.
+- OpenCode 1.19.4 runs each phase in a fresh private directory with only fixed
+  sandbox/MCP tools enabled. OpenAI uses `OPENAI_API_KEY`; App keys/tokens are
+  excluded from the model process. The MCP process receives a cleared environment.
+  Execution containers have no network, credentials, host mounts, or runtime
+  sockets. Bounded regular-file patches are published through Git object APIs,
+  not executed or applied on the host. The reviewer key is never referenced.
+- Verification: `.venv/bin/python scripts/check.py` passes both language suites,
+  15 script checks (11 worker checks plus the existing activation/integration
+  checks), static checks, and strict validation of all three active changes.
+- Verification: image build and `scripts/worker_runtime_check.py --runtime podman`
+  pass on this Linux host using rootless Podman. The checks exercise actual
+  isolation/hostile symlink rejection, resolved OpenCode permissions, real stdio
+  MCP startup, selected-model catalog recognition without a real API key, and
+  integrated plus packaged CLI checks in the offline container (Node 22/Python
+  3.11). No model request or GitHub write is made by these checks.
+- Verification: actionlint 1.7.7 passes both CI and issue-worker workflows.
+  Lifecycle tests cover linked PR/evidence creation, questions/duplicates pausing,
+  current-head failures, manual-merge completion, unchanged reopen budgets,
+  authorized retry, interrupted attempts, lost publication responses, stale issue
+  rejection, and rejection of a regression that already passes before the fix.
+- Failures resolved: the existing host virtualenv needed its renamed editable
+  package reinstalled. Rootless Podman required portable tmpfs options and an
+  explicit sandbox-only Git safe.directory; initialization now copies files
+  without preserving root ownership. Output is streamed with a bounded memory
+  buffer rather than an inherited file-size limit that restricted container
+  builds. Offline packaged npm installation required warming registry metadata
+  as well as tarballs; the build now warms the real package-install path.
+  A failing regression also demonstrated that a disconnected MCP bridge must not
+  pass the connection preflight merely because "disconnected" contains
+  "connected"; the status now strips terminal color codes and requires the exact
+  sandbox/connected words. The real startup check verifies the colored CLI output.
+- Task 5.1 is complete with local executable lifecycle evidence. Tasks 5.2–5.5
+  remain unchecked pending the controlled hosted acceptance of their implemented
+  paths: actual App permissions/token operations, real OpenAI access, GitHub
+  event/concurrency/recovery behavior, and linked issue-to-PR evidence. The local
+  fake-API checks are not represented as a live GitHub run.
+- Activation remains off by default (`ISSUE_WORKER_ENABLED` must explicitly be
+  `true`). No worker, reviewer, auto-merger, or publisher is claimed active. No
+  secrets were accessed, no remote changes were made, and no push or publishing
+  occurred. Independent reviewer implementation and no-bypass current-head merge
+  enforcement remain prerequisites for merging worker PRs. Automatic merging
+  remains a separate later activation step.
+- The current activation report detects an `origin` remote. Its existence does
+  not verify hosted CI, installed Apps, stored secrets, or active orchestration;
+  none of those remote settings or services was inspected in this session.
+- Setup and local reproduction: `docs/issue-worker.md`, primary README commands,
+  and `github-automation-setup-instructions.md`. Limits and offline dependency
+  behavior are documented. Bootstrap cannot yet be archived.
 
 ## Rootprint rename and versioned labels
 

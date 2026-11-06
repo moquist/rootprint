@@ -29,7 +29,7 @@
 
 ## 5. Agent-driven issue handling
 
-- [ ] 5.1 Add issue forms, durable lifecycle labels, OpenCode worker instructions, and activation/status configuration; verify actionable, duplicate, needs-information, and ambiguous-behavior reports follow the specified transitions with recorded links.
+- [x] 5.1 Add issue forms, durable lifecycle labels, OpenCode worker instructions, and activation/status configuration; verify actionable, duplicate, needs-information, and ambiguous-behavior reports follow the specified transitions with recorded links.
 - [ ] 5.2 Implement trusted orchestration with credential-free execution sandboxes and narrow GitHub App API operations; verify adversarial issue/PR content cannot access provider/write secrets through build commands or artifact handling before enabling workers.
 - [ ] 5.3 Add issue/reopen triggers and scheduled reconciliation, per-issue concurrency, 30-minute timeouts, and three-attempt durable limits; verify repeated events do not duplicate active workers and exhausted issues remain blocked until eligible retry.
 - [ ] 5.4 Connect separate OpenSpec planning, implementation, and completion phases to branch/PR creation; verify a controlled issue produces linked artifacts, regression evidence, a fix PR, and an accurate status comment without human code edits.

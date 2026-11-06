@@ -7,10 +7,13 @@ local origin configuration without printing the remote URL (which could contain
 credentials). `--require-active` exits nonzero while autonomy is inactive.
 
 Prepared locally: spec-driven agent instructions, shared verification, a
-read-only CI matrix, issue forms, and weekly Dependabot configuration. **No
+read-only CI matrix, issue forms, weekly Dependabot configuration, and an
+[issue worker](issue-worker.md) with isolated OpenCode execution. **No
 unattended issue worker, independent PR reviewer, auto-merger, release bot, or
-publisher is running.** Those integrations still need implementation and live
-verification; pushing alone does not complete autonomous maintenance.
+publisher is verified as running.** The worker is disabled by default and needs
+controlled hosted verification. Reviewer, merge, and release integrations still
+need implementation and live verification; pushing alone does not complete
+autonomous maintenance.
 
 ## What local operation gives up
 
@@ -32,6 +35,8 @@ These are activation gaps, not permission to weaken the specified gates.
 3. Implement and install a dedicated GitHub App for issue comments, branch/PR
    writes, check results, and merge operations. Use App-generated PRs so normal
    CI events are triggered. Scope its installation to this repository.
+   The initial worker is now implemented; configure its App and OpenAI secrets
+   using [the worker guide](issue-worker.md). It opens PRs without merging them.
 4. Connect OpenCode model access in trusted orchestration. Keep provider
    credentials outside credential-free code-execution sandboxes, and verify
    that isolation with adversarial issue content. Do not simply run an
@@ -43,7 +48,10 @@ These are activation gaps, not permission to weaken the specified gates.
    with normal human PR approval not required. Never temporarily drop the review
    requirement to make a not-yet-integrated bot merge.
 7. Verify one controlled issue-to-spec-to-fix-to-review-to-merge run. Enable
-   unattended issue schedules and auto-merging only after that evidence exists.
+    unattended issue schedules and auto-merging only after that evidence exists.
+   During the initial rollout, use owner-applied `ready` labels and a manual merge
+   after the same required checks pass. Verify automatic merging separately when
+   the owner chooses to enable it.
 
 ## Worker contract
 

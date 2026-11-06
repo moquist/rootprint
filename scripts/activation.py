@@ -21,8 +21,8 @@ def status():
         blockers.append("No origin remote: GitHub event-driven automation and hosted checks are unavailable")
     blockers.extend([
         "Hosted Linux/macOS/Windows CI has not been verified",
-        "Scoped GitHub App and provider integration are not installed or verified",
-        "Trusted orchestration and credential-free worker integration are not implemented or verified",
+        "Scoped GitHub App installation and OpenAI provider access have not been live-verified",
+        "Issue worker is implemented and disabled by default; hosted isolation and issue-to-PR acceptance are unverified",
         "Current-head independent automated PR review and no-bypass merge gates are not implemented or verified",
         "Controlled issue-to-PR-to-review-to-merge acceptance run is pending",
         "Automatic version PRs and verified publishing integration are not implemented or verified",
@@ -35,7 +35,8 @@ def status():
         "githubMaintenanceActive": False,
         "publishingActive": False,
         "originConfigured": has_remote,
-        "prepared": ["OpenSpec contract", "local verification", "read-only CI workflow", "issue forms", "dependency update configuration"],
+        "prepared": ["OpenSpec contract", "local verification", "read-only CI workflow", "issue forms",
+                     "dependency update configuration", "isolated OpenCode issue worker (manual merges)"],
         "blockers": blockers,
     }
 

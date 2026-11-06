@@ -1,0 +1,90 @@
+name: Issue worker
+
+on:
+  issues:
+    types: [opened, reopened, edited, labeled]
+  issue_comment:
+    types: [created, edited]
+  schedule:
+    - cron: '17,47 * * * *'
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: 'Issue number (0 reconciles all issues)'
+        type: number
+        default: 0
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: read
+  issues: read
+
+jobs:
+  discover:
+    if: >-
+      vars.ISSUE_WORKER_ENABLED == 'true' &&
+      (github.event_name != 'issue_comment' || github.event.sender.type != 'Bot') &&
+      (github.event_name != 'issues' || github.event.sender.type != 'Bot')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      issues: ${{ steps.discover.outputs.issues }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.11'
+      - id: discover
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ inputs.issue || 0 }}
+        run: |
+          issues=$(python scripts/issue_worker.py discover --issue "$ISSUE_NUMBER")
+          printf 'issues=%s\n' "$issues" >> "$GITHUB_OUTPUT"
+
+  work:
+    needs: discover
+    if: needs.discover.outputs.issues != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        issue: ${{ fromJSON(needs.discover.outputs.issues) }}
+    concurrency:
+      group: rootprint-issue-${{ matrix.issue }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        if: matrix.issue != 0
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.11'
+      - name: Prepare pinned OpenCode (no worker secrets)
+        if: matrix.issue != 0
+        run: npm install --global opencode-ai@1.19.4
+      - name: Build credential-free execution image
+        if: matrix.issue != 0
+        run: python scripts/worker_sandbox.py build
+      - name: Verify execution boundary before using credentials
+        if: matrix.issue != 0
+        run: python scripts/worker_runtime_check.py
+      - name: Coordinate issue work (trusted default-branch code only)
+        env:
+          IMPLEMENTATION_APP_ID: ${{ vars.IMPLEMENTATION_APP_ID }}
+          IMPLEMENTATION_APP_PRIVATE_KEY: ${{ secrets.IMPLEMENTATION_APP_PRIVATE_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ISSUE_NUMBER: ${{ matrix.issue }}
+        run: python scripts/issue_worker.py run --issue "$ISSUE_NUMBER"

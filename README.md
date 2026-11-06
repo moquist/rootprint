@@ -46,6 +46,19 @@ verify vectors with OpenSSL and reproduce setup/tests in a disposable source
 copy, including intentional mutations of canonical bytes, array order, and
 prefix length. The mutation failures are expected regression evidence.
 
+For the issue worker's additional execution-boundary checks, use Linux with
+Docker and OpenCode 1.19.4 installed on `PATH`:
+
+```sh
+python3 scripts/worker_sandbox.py build
+python3 scripts/worker_runtime_check.py
+```
+
+These checks need no GitHub/OpenAI credentials and make no model requests.
+They verify isolation, the real OpenCode/MCP connection, and offline integrated
+and packaged CLI checks. For rootless Podman, add `--runtime podman` to both
+commands. See [worker setup and operation](docs/issue-worker.md).
+
 ## Simple usage
 
 Run setup above first. Packages are not yet published, so these examples use the
@@ -119,10 +132,12 @@ automatic merging, and publishing are **not active** until remote setup is
 completed. Local development does not weaken those intended merge gates, but
 cannot demonstrate them or provide unattended GitHub maintenance.
 
-Run `python scripts/activation.py` for outstanding requirements. See
-[automation activation](docs/automation.md): pushing enables CI, but the remaining
-agent/reviewer/merge/release integrations still need implementation and live
-verification.
+Run `python scripts/activation.py` for outstanding requirements. The
+[issue worker](docs/issue-worker.md) is implemented for owner-selected issues and
+manual merging, with OpenAI GPT-6.1 Sol and isolated code execution. Its workflow
+is disabled by default and still needs controlled hosted verification. Independent
+review, automatic merging, and releases remain separate integrations. See
+[automation activation](docs/automation.md).
 
 ## License
 
