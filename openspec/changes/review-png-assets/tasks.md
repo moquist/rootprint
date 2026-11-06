@@ -27,7 +27,7 @@
 - Owner rebase-merged https://github.com/moquist/rootprint/pull/8 at `ecbce4f`.
 - Reviewer App approved its exact head: https://github.com/moquist/rootprint/actions/runs/42171395028. Two earlier HTTP 429 failures were resolved after the owner added OpenAI credits.
 - Implementation rebased onto that base; runtime/policy/test bytes remain identical to the verified original. SSH fetch failed (publickey); authenticated HTTPS fetch succeeded without changing remote configuration.
-- Further handoff evidence lives here to avoid adding the large ledger's baseline to this PR. Task 3.2 remains open; no agent push or merge occurred.
+- Further handoff evidence lives here to avoid adding the large ledger's baseline to this PR. At deployment, task 3.2 was still open; its later hosted acceptance is recorded below. No agent push or merge occurred.
 - Rebased verification passes: both ports, 29 script tests, Ruff, strict specs, and diff checks. Deployed-reviewer replay fits 600,000 bytes with a 2,048-byte discussion allowance; exact size is recorded in the verification commit.
 
 ## Hosted logo acceptance — verified 2026-11-06
@@ -38,4 +38,4 @@
 - Ruleset `26673301` remains active, bypass actors empty, current user bypass `never`, strict required checks bound to the two App IDs, and rebase-only/linear-history enforcement enabled.
 - Owner-authorized retry passed on exact head `1c1c2e58fb3699c0598a7fc5b96e1915740039c6` from App `5631539`: https://github.com/moquist/rootprint/actions/runs/42173443577. The reviewer again explicitly inspected the image and returned a nonblocking line-zero finding about background speckling/contrast. Original image bytes remain unchanged.
 - `gh pr checks 10 --required` confirms current-head CI and independent review pass. GitHub reports `UNSTABLE`/`MERGEABLE`; no agent merge was attempted. Task 3.2 is complete (7/7 total) with visual, freshness, and failed/missing-check blocking evidence above.
-- Completion evidence is on local `docs/png-review-acceptance`; the pushed logo branch/head is unchanged and ready for the owner's rebase-merge. No agent push or merge occurred. Keep bootstrap unarchived; do not archive this additive delta ahead of its baseline.
+- Owner rebase-merged PR #10 at `1cf2936b35c3fb8f894865b8b92d89aef354cd49` on 2026-11-06T06:20:15Z. The completion-record branch `docs/png-review-acceptance` is rebased onto that merged tree and changes only this task/evidence file. No agent push or merge occurred. Keep bootstrap unarchived; do not archive this additive delta ahead of its baseline.
