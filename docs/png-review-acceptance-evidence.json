@@ -1,0 +1,183 @@
+{
+  "repository": "moquist/rootprint",
+  "provenance": "Selected fields from GitHub REST/GraphQL responses inspected during hosted acceptance and re-fetched for this record. Check runs and current rules can be re-fetched with gh api. Historical mergeability projections below were captured during the live test; they are observations, not a claim that today's API returns historical mergeability.",
+  "pull_request": {
+    "source": "gh pr view 10 --json number,state,headRefOid,baseRefOid,mergeCommit,mergedAt,url",
+    "response": {
+      "number": 10,
+      "state": "MERGED",
+      "headRefOid": "1c1c2e58fb3699c0598a7fc5b96e1915740039c6",
+      "baseRefOid": "47f68880ac28840d69b240f2a5d272f2b6200151",
+      "mergeCommit": {"oid": "1cf2936b35c3fb8f894865b8b92d89aef354cd49"},
+      "mergedAt": "2026-11-06T06:20:15Z",
+      "url": "https://github.com/moquist/rootprint/pull/10"
+    }
+  },
+  "check_runs_source": "gh api repos/moquist/rootprint/check-runs/{id}",
+  "check_runs": [
+    {
+      "id": 127743430168,
+      "name": "independent-review",
+      "head_sha": "6dba3415ef719fdfa587ca77c523472621308617",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-06T06:08:13Z",
+      "completed_at": "2026-11-06T06:08:47Z",
+      "app": {"id": 5631539, "slug": "rootprint-review-worker"},
+      "details_url": "https://github.com/moquist/rootprint/actions/runs/42172497614",
+      "output": {
+        "title": "Independent review passed",
+        "summary": "Reviewed head `6dba3415ef719fdfa587ca77c523472621308617` against base `47f68880ac28840d69b240f2a5d272f2b6200151`.\n\nThe README adds the supplied logo with descriptive alt text and accurately explains the Merkle-root, fingerprint, and footprint naming. I inspected the labeled head PNG; its footprint/tree motif and Rootprint wordmark match that explanation. Usage examples and setup/all-tests commands remain intact. Runtime behavior, protocol bytes, workflows, policies, and credential permissions are unchanged. Regression and error-path assessments are not applicable to this documentation/asset-only change. No current-head CI results were supplied; CI remains a separate required merge gate. Hosted freshness and merge-blocking acceptance appropriately remain incomplete.\n\n- acceptance: pass\n- regression: not-applicable\n- error_paths: not-applicable\n- compatibility: pass\n- trust_boundaries: pass\n\n\n\n[Trusted review run](https://github.com/moquist/rootprint/actions/runs/42172497614). CI remains a separate required gate."
+      }
+    },
+    {
+      "id": 127743728521,
+      "name": "ci",
+      "head_sha": "6dba3415ef719fdfa587ca77c523472621308617",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-06T06:09:08Z",
+      "completed_at": "2026-11-06T06:09:10Z",
+      "app": {"id": 15368, "slug": "github-actions"},
+      "details_url": "https://github.com/moquist/rootprint/actions/runs/42172498444/job/127743728521"
+    },
+    {
+      "id": 127744827545,
+      "name": "independent-review",
+      "head_sha": "1c1c2e58fb3699c0598a7fc5b96e1915740039c6",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-11-06T06:12:22Z",
+      "completed_at": "2026-11-06T06:12:41Z",
+      "app": {"id": 5631539, "slug": "rootprint-review-worker"},
+      "details_url": "https://github.com/moquist/rootprint/actions/runs/42172937250",
+      "output": {
+        "title": "Independent review blocked",
+        "summary": "Independent review did not approve: OpenAI review request failed (HTTP 429).\n\n[Review run](https://github.com/moquist/rootprint/actions/runs/42172937250)."
+      }
+    },
+    {
+      "id": 127745266152,
+      "name": "ci",
+      "head_sha": "1c1c2e58fb3699c0598a7fc5b96e1915740039c6",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-06T06:13:43Z",
+      "completed_at": "2026-11-06T06:13:47Z",
+      "app": {"id": 15368, "slug": "github-actions"},
+      "details_url": "https://github.com/moquist/rootprint/actions/runs/42172939856/job/127745266152"
+    },
+    {
+      "id": 127746465847,
+      "name": "independent-review",
+      "head_sha": "1c1c2e58fb3699c0598a7fc5b96e1915740039c6",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-06T06:17:20Z",
+      "completed_at": "2026-11-06T06:18:04Z",
+      "app": {"id": 5631539, "slug": "rootprint-review-worker"},
+      "details_url": "https://github.com/moquist/rootprint/actions/runs/42173443577",
+      "output": {
+        "title": "Independent review passed",
+        "summary": "Reviewed head `1c1c2e58fb3699c0598a7fc5b96e1915740039c6` against base `47f68880ac28840d69b240f2a5d272f2b6200151`.\n\nThe README references the supplied PNG with descriptive alt text and explains Merkle root, fingerprint, and the footprint wordplay. I inspected the head image: it shows the tree/fingerprint-footprint motif beside the Rootprint wordmark. Existing setup, all-tests commands, and both language examples are preserved. Supplied CI evidence reports success on this exact head; ledger claims are not treated as independently verified hosted acceptance. Regression and error-path assessments are not applicable to this documentation/asset-only change. Protocol bytes, APIs, workflows, credentials, and required merge gates are unchanged.\n\n- acceptance: pass\n- regression: not-applicable\n- error_paths: not-applicable\n- compatibility: pass\n- trust_boundaries: pass\n\n- **warning** `rootprint-horizontal.png:0`: The supplied rendering has dense multicolored background speckling, and the dark 'print' lettering has limited contrast against the dark background. Consider an owner-approved clean-background variant for improved README legibility, while preserving the original supplied asset.\n\n[Trusted review run](https://github.com/moquist/rootprint/actions/runs/42173443577). CI remains a separate required gate."
+      }
+    }
+  ],
+  "historical_mergeability_observations": [
+    {
+      "phase": "Initial head approved, before owner pushed the alt-text change",
+      "source": "gh pr view 10 --json mergeStateStatus,mergeable,baseRefOid",
+      "head_at_observation": "6dba3415ef719fdfa587ca77c523472621308617",
+      "response": {
+        "baseRefOid": "47f68880ac28840d69b240f2a5d272f2b6200151",
+        "mergeStateStatus": "CLEAN",
+        "mergeable": "MERGEABLE"
+      }
+    },
+    {
+      "phase": "Immediately after owner push, new-head checks pending",
+      "source": "gh pr view 10 --json headRefOid,mergeStateStatus,mergeable,statusCheckRollup,url",
+      "response_projection": {
+        "headRefOid": "1c1c2e58fb3699c0598a7fc5b96e1915740039c6",
+        "mergeStateStatus": "BLOCKED",
+        "mergeable": "MERGEABLE",
+        "url": "https://github.com/moquist/rootprint/pull/10"
+      },
+      "check_runs_source": "gh api 'repos/moquist/rootprint/commits/1c1c2e58fb3699c0598a7fc5b96e1915740039c6/check-runs?filter=latest'",
+      "check_runs_observation": "Only queued/in-progress matrix and discover jobs were present; no ci aggregate or independent-review check yet existed on the new head. Old-head check 127743430168 remained successful on its different head SHA."
+    },
+    {
+      "phase": "New-head CI succeeded, fresh reviewer failed, before owner retry",
+      "source": "gh pr view 10 --json headRefOid,mergeStateStatus",
+      "response": {
+        "headRefOid": "1c1c2e58fb3699c0598a7fc5b96e1915740039c6",
+        "mergeStateStatus": "BLOCKED"
+      },
+      "successful_ci_check_run": 127745266152,
+      "failed_reviewer_check_run": 127744827545
+    },
+    {
+      "phase": "After owner retry, all required checks pass",
+      "source": "gh pr view 10 --json headRefOid,mergeStateStatus,mergeable",
+      "response": {
+        "headRefOid": "1c1c2e58fb3699c0598a7fc5b96e1915740039c6",
+        "mergeStateStatus": "UNSTABLE",
+        "mergeable": "MERGEABLE"
+      },
+      "required_checks_source": "gh pr checks 10 --required",
+      "required_checks_response": [
+        {"name": "ci", "state": "pass", "url": "https://github.com/moquist/rootprint/actions/runs/42172933938/job/127745173911"},
+        {"name": "ci", "state": "pass", "url": "https://github.com/moquist/rootprint/actions/runs/42172939856/job/127745266152"},
+        {"name": "independent-review", "state": "pass", "url": "https://github.com/moquist/rootprint/actions/runs/42173443577"}
+      ]
+    }
+  ],
+  "ruleset_source": "gh api repos/moquist/rootprint/rulesets/26673301",
+  "ruleset_projection": {
+    "id": 26673301,
+    "name": "Rootprint default branch",
+    "target": "branch",
+    "enforcement": "active",
+    "conditions": {"ref_name": {"exclude": [], "include": ["~DEFAULT_BRANCH"]}},
+    "bypass_actors": [],
+    "current_user_can_bypass": "never",
+    "updated_at": "2026-11-06T00:17:00.522-05:00",
+    "rules": [
+      {"type": "deletion"},
+      {"type": "non_fast_forward"},
+      {
+        "type": "pull_request",
+        "parameters": {
+          "required_approving_review_count": 0,
+          "dismiss_stale_reviews_on_push": true,
+          "required_reviewers": [],
+          "require_code_owner_review": false,
+          "require_last_push_approval": false,
+          "required_review_thread_resolution": true,
+          "require_extra_approval_for_unattributed_changes": true,
+          "allowed_merge_methods": ["rebase"]
+        }
+      },
+      {
+        "type": "required_status_checks",
+        "parameters": {
+          "strict_required_status_checks_policy": true,
+          "do_not_enforce_on_create": false,
+          "required_status_checks": [
+            {"context": "ci", "integration_id": 15368},
+            {"context": "independent-review", "integration_id": 5631539}
+          ]
+        }
+      },
+      {"type": "required_linear_history"}
+    ]
+  },
+  "effective_branch_rules_source": "gh api repos/moquist/rootprint/rules/branches/main",
+  "effective_branch_rules_projection": [
+    {"type": "deletion", "ruleset_id": 26673301},
+    {"type": "non_fast_forward", "ruleset_id": 26673301},
+    {"type": "pull_request", "ruleset_id": 26673301},
+    {"type": "required_status_checks", "ruleset_id": 26673301},
+    {"type": "required_linear_history", "ruleset_id": 26673301}
+  ]
+}
