@@ -53,6 +53,10 @@ def digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
 
 
+def compact(value):
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+
+
 def policy():
     return (ROOT / "automation/reviewer-policy.md").read_text(encoding="utf-8")
 
@@ -80,7 +84,7 @@ def metadata(client, reader, number):
         "head": sha(pr["head"]["sha"]), "base": sha(pr["base"]["sha"]), "base_ref": pr["base"]["ref"],
         "comments": [{"author": c["user"]["login"], "body": c["body"]} for c in comments], "issues": issues,
     }
-    if len(json.dumps(result).encode()) > MAX_CONTEXT:
+    if len(compact(result).encode()) > MAX_CONTEXT:
         raise ValueError("Review metadata exceeds context limits")
     return result
 
@@ -233,9 +237,8 @@ def context(client, data):
               "current_base_contracts": contracts, "omitted_unchanged_paths": omitted,
               "ci_evidence": [{"name": c["name"], "app": c["app"]["slug"], "head_sha": c["head_sha"],
                                "status": c["status"], "conclusion": c.get("conclusion")} for c in checks]}
-    if len(json.dumps(result).encode()) > MAX_CONTEXT:
-        raise ValueError("Complete review context exceeds size limit; no content was silently truncated")
     result["image_data"] = image_data
+    model_content(result)
     return result
 
 
@@ -267,19 +270,26 @@ def validate_result(result, data, files, image_paths=()):
     return result
 
 
+def model_content(task_data):
+    content = [{"type": "input_text", "text": compact({k: v for k, v in task_data.items() if k != "image_data"})}]
+    for image in task_data.get("images", []):
+        content.extend([
+            {"type": "input_text", "text": "PNG version (untrusted label): " + compact(image)},
+            {"type": "input_image", "image_url": "data:image/png;base64," + task_data["image_data"][image["sha"]]},
+        ])
+    if sum(len(c["text"].encode()) for c in content if c["type"] == "input_text") > MAX_CONTEXT:
+        raise ValueError("Complete review context exceeds size limit; no content was silently truncated")
+    return content
+
+
 def ask_model(task_data):
     if not os.environ.get("OPENAI_API_KEY"):
         raise ValueError("Missing configuration: OPENAI_API_KEY")
-    content = [{"type": "input_text", "text": json.dumps({k: v for k, v in task_data.items() if k != "image_data"})}]
-    for image in task_data.get("images", []):
-        content.extend([
-            {"type": "input_text", "text": "PNG version (untrusted label): " + json.dumps(image)},
-            {"type": "input_image", "image_url": "data:image/png;base64," + task_data["image_data"][image["sha"]]},
-        ])
+    content = model_content(task_data)
     payload = {"model": MODEL.removeprefix("openai/"), "store": False, "tools": [], "tool_choice": "none",
                "max_output_tokens": 10000, "instructions": policy(), "input": [{"role": "user", "content": content}],
                "text": {"format": {"type": "json_schema", "name": "independent_review", "strict": True, "schema": SCHEMA}}}
-    request = Request("https://api.openai.com/v1/responses", data=json.dumps(payload).encode(), method="POST",
+    request = Request("https://api.openai.com/v1/responses", data=compact(payload).encode(), method="POST",
                       headers={"Authorization": "Bearer " + os.environ["OPENAI_API_KEY"], "Content-Type": "application/json"})
     try:
         with urlopen(request, timeout=600) as response:
