@@ -1,5 +1,27 @@
 # Local work ledger
 
+## Latest session handoff — 2026-11-06 (logo acceptance ready)
+
+- Owner rebase-merged https://github.com/moquist/rootprint/pull/9; trusted base
+  is `47f6888`. Exact-head reviewer App approval (App ID `5631539`):
+  https://github.com/moquist/rootprint/actions/runs/42171867112. Its aggregate CI
+  passed: https://github.com/moquist/rootprint/actions/runs/42171867042.
+- Refreshed `docs/readme-logo` onto that base. Original commit `c6f7adc` remains
+  on `backup/readme-logo-original`; the image is unchanged at blob
+  `68e55fbadc2a7711906c2b1022b43b3fd691ec29` (425,335 bytes, 1005×419).
+- Verified actual Git snapshots through the deployed reviewer and captured the
+  fake Responses request: the exact PNG bytes are inline image input with its
+  path/SHA/head label. No live model call was made. Text fits the unchanged
+  600,000-byte limit including a 2,048-byte discussion allowance; exact count is
+  in the verification commit. Both ports, 29 script checks, Ruff, strict specs,
+  and whitespace checks pass. Rebase-only/no-bypass/App-bound required rules
+  remain effective; auto-merge stays off.
+- Next: owner pushes `docs/readme-logo` and opens its PR. Leave it open after
+  initial visual review/CI. Then verify a new commit requires fresh exact-head
+  review/CI and blocks merging while required checks are missing or failing.
+  Record real PR/check/run evidence before completing task 3.2 or merging.
+  `review-png-assets` remains 6/7 complete. No agent push or merge occurred.
+
 ## Latest session handoff — PNG split
 
 - Owner requested two sequential PRs: `docs/png-review-plan` first, then
