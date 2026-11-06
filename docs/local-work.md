@@ -71,6 +71,20 @@ ownership and publishing identity are separate release prerequisites.
   enables the prepared CI, not the missing worker/review/merge integrations.
 - Do not archive bootstrap or claim autonomous maintenance is complete.
 
+## Issue worker implementation intake
+
+- The owner reports creating the GitHub Apps and their private keys and requests
+  issue-worker implementation (bootstrap tasks 5.1–5.5).
+- Initial rollout: owner-selected `ready` issues, AI-prepared PRs, manual merging,
+  and required CI plus independent automated review. Automatic merging remains a
+  later activation step, as described in `github-automation-setup-instructions.md`.
+- Implementation is awaiting an account-owner decision on the LLM provider and
+  model, plus the name of the Actions secret containing its API credential.
+  No credential values should be supplied in conversation or committed.
+- App installation, stored credentials, hosted execution, and sandbox isolation
+  have not been inspected or verified. No worker is active and no bootstrap task
+  is newly complete. No remote changes are authorized by this intake.
+
 ## Rootprint rename and versioned labels
 
 - Contracts: `openspec/changes/rename-rootprint/` and
