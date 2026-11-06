@@ -209,6 +209,8 @@ PR's head SHA, open
 **Settings → Rules → Rulesets** and protect `main` with:
 
 - Require a pull request.
+- Allow only **Rebase and merge** and require linear history. In repository
+  settings, enable rebase merging and disable squash merging and merge commits.
 - Require the **`ci`** status check.
 - Require **`independent-review`**, restricted to the reviewer App as its source.
 - Block force pushes and branch deletion.
@@ -250,7 +252,8 @@ When you are ready:
 
 1. Enable **Allow auto-merge** in repository settings.
 2. Implement and enable the worker's auto-merge request for one controlled PR,
-   using squash merging. GitHub must enforce the same required checks.
+   using rebase merging. GitHub must enforce the same required checks and
+   rebase-only, linear-history policy.
 3. Verify that failed, missing, or stale CI/review checks prevent merging, and
    that new commits require fresh checks and independent review.
 4. Verify that the controlled PR merges automatically only after all required

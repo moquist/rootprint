@@ -38,7 +38,7 @@
 ## 6. Independent review and merging
 
 - [ ] 6.1 Add fresh-context automated PR review tied to the current head SHA, without executing PR code in the privileged reviewer; verify an approving result becomes stale on a new commit and a failing review blocks merging.
-- [ ] 6.2 Add narrowly scoped automatic squash merging behind required CI and review checks, using App-generated PRs to trigger normal checks; verify failed/missing/stale checks prevent merge and a fully passing controlled PR merges without human approval.
+- [ ] 6.2 Add narrowly scoped automatic rebase merging behind required CI and review checks, using App-generated PRs to trigger normal checks; verify squash merging and merge commits are disabled, default-branch history remains linear, failed/missing/stale checks prevent merge, and a fully passing controlled PR merges without human approval.
 - [ ] 6.3 Document and expose activation checks for branch rules, no-bypass permissions, App installation, provider credentials, and runner isolation; verify absent configuration reports concrete blockers rather than claiming autonomy is active.
 
 ## 7. Release automation

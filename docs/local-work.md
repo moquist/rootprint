@@ -1,5 +1,34 @@
 # Local work ledger
 
+## Latest session handoff — 2026-11-06 (rebase-only policy)
+
+- The owner ran the GitHub settings script. Live API inspection confirmed the
+  active `Rootprint default branch` ruleset (ID `26673301`) for `moquist/rootprint`
+  and passing `ci` on `main` at `2c28616f11e3933556b6ae27a255afa8a46c0f2f`:
+  https://github.com/moquist/rootprint/actions/runs/42153239113/job/127681704779.
+- The owner rejected squash merging and authorized rebase-only merging, then
+  confirmed matching changes to the bootstrap spec, design, and task 6.2.
+  This supersedes the squash settings in the previous handoff below.
+- Applied and independently re-read repository settings: `allow_rebase_merge=true`,
+  `allow_squash_merge=false`, `allow_merge_commit=false`, `allow_auto_merge=false`.
+  Updated the existing ruleset to allow only `rebase` and require linear history.
+  The effective `main` rules API confirms both restrictions. Existing protections
+  remain active: required PR, strict current-base checks `ci` from Actions App
+  `15368` and `independent-review` from reviewer App `5631539`, deletion/force-push
+  blocking, resolved review threads, no routine human approval, and no bypass
+  actors. Ruleset: https://github.com/moquist/rootprint/rules/26673301.
+- `INDEPENDENT_REVIEW_ENABLED=true` and reviewer App ID `5631539` are configured;
+  actual hosted review and merge-blocking acceptance still need a controlled PR.
+  The worker enable variable is absent. Automatic merging remains disabled and
+  task 6.2 remains unchecked; this settings change does not implement it.
+- Next implementation remains `/opsx-apply review-png-assets`, followed by
+  owner deployment and a controlled logo PR. No push, merge, or publication was
+  performed. The owner still performs all pushes. Preserve the logo branch/asset.
+- Verification: all four changes pass `openspec validate --all --strict` and
+  `git diff --check` passes. Initial validation flagged a requirement exceeding
+  500 characters; separating the rebase-only policy into its own requirement
+  resolved it. Only documentation/planning changed; no runtime tests were needed.
+
 ## Latest session handoff — 2026-11-06
 
 ### Owner instructions and immediate next action
