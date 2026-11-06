@@ -122,8 +122,14 @@ installation-token creation/revocation.
 
 Limits are explicit and fail closed: 200 open PRs per reconciliation, 100 changed
 files, 500 included head text files, 2,000 Git tree entries, 100,000 bytes per text
-file, and 600,000 bytes of serialized text context (including image labels but
-excluding image payloads). Discussions allow 100 comments each and 10 linked
+file, and 1,200,000 UTF-8 bytes of complete serialized task text in hosted reviews
+(including image labels, excluding image payloads). The trusted workflow uses
+`scripts/hosted_independent_review.py`; direct `scripts/independent_review.py`
+execution retains its 600,000-byte default. The hosted allowance supersedes the
+earlier 600,000-byte deployment limit; it is an operational budget, not a measured
+model token-capacity claim. All overflow still blocks without truncation.
+Pooling/scoping remain planned reductions in total input and repeated review cost.
+Discussions allow 100 comments each and 10 linked
 issues. Static `.png` files (case-insensitive suffix) have separate limits:
 1 MiB per version, four labeled versions and 2 MiB total decoded image bytes,
 4096 pixels per side, and 8,000,000 pixels. Baseline and head attachments count
@@ -145,7 +151,7 @@ The standard README setup and all-tests command include the reviewer acceptance
 checks. To run them alone:
 
 ```sh
-python3 -m unittest discover -s scripts -p test_independent_review.py
+python3 -m unittest discover -s scripts -p '*review*.py'
 ```
 
 These checks use fake GitHub/OpenAI transports, need no credentials, and spend no
