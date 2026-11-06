@@ -1,5 +1,8 @@
 # Design
 
+> Historical design, superseded by `exclude-images-from-review`. Its PNG parser,
+> transport, budgets, and visual acceptance requirements are withdrawn.
+
 ## Context
 
 See `proposal.md` for motivation. `context()` currently decodes every changed blob

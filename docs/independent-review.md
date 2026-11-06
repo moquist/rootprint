@@ -59,8 +59,8 @@ App check even if the orchestration job finishes normally.
 
 ## Review behavior
 
-PNG behavior below applies after the implementation PR is deployed; deployment
-status and the sequential PR branches are tracked in `local-work.md`.
+Image-exclusion behavior below applies after this change is deployed; local and
+hosted status are tracked in `local-work.md`.
 
 The trusted workflow runs for PR creation, new commits, edits, reopening,
 ready-for-review/draft transitions, explicit dispatch, and 30-minute scheduled
@@ -77,13 +77,13 @@ error paths, protocol/port compatibility, and trust boundaries. It scrutinizes
 workflow and agent-policy changes explicitly. CI is a separate required gate;
 the reviewer does not claim to execute tests.
 
-Changed static PNGs are supplied as actual inline Responses API image input, not
-filenames alone or external URLs. Each version is labeled with path, immutable
-Git blob SHA, baseline/head role, file mode, dimensions, and byte size. Additions
-include the head image, deletions the baseline image, and modifications/renames
-the applicable before/after images. Base64 stays outside text-context accounting
-and check summaries. Image findings may cite only supplied image paths with
-line zero. Visible image text and labels are untrusted data, not instructions.
+Image contents are excluded from review without fetching or validating bytes.
+Case-insensitive `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.svg`, `.ico`, `.bmp`,
+`.tif`, `.tiff`, `.avif`, and `.apng` suffixes identify excluded assets, including
+unchanged files. `omitted_image_paths` lists them; changed paths and modes remain
+in metadata. Only text is sent to the model. Image-only PRs can pass ordinary
+review; missing visual inspection is not a reason to block. Surrounding text,
+including README references, is still reviewed.
 
 Only a valid structured approval with matching head/base SHAs, passing applicable
 assessments, passing trust-boundary assessment, and no blocking findings can
@@ -123,25 +123,20 @@ installation-token creation/revocation.
 Limits are explicit and fail closed: 200 open PRs per reconciliation, 100 changed
 files, 500 included head text files, 2,000 Git tree entries, 100,000 bytes per text
 file, and 1,200,000 UTF-8 bytes of complete serialized task text in hosted reviews
-(including image labels, excluding image payloads). The trusted workflow uses
+(excluding image contents). The trusted workflow uses
 `scripts/hosted_independent_review.py`; direct `scripts/independent_review.py`
 execution retains its 600,000-byte default. The hosted allowance supersedes the
 earlier 600,000-byte deployment limit; it is an operational budget, not a measured
 model token-capacity claim. All overflow still blocks without truncation.
 Pooling/scoping remain planned reductions in total input and repeated review cost.
-Discussions allow 100 comments each and 10 linked
-issues. Static `.png` files (case-insensitive suffix) have separate limits:
-1 MiB per version, four labeled versions and 2 MiB total decoded image bytes,
-4096 pixels per side, and 8,000,000 pixels. Baseline and head attachments count
-separately, even for identical blobs. PNG signature, IHDR fields, chunk framing,
-CRCs, palette/data ordering, image-data presence, and terminal IEND are checked
-without decompressing or rendering pixels on the host. Animation, malformed
-PNGs, other changed binaries, symlinks/submodules, truncated trees, or oversized
-changes block review. Provider image-decoding errors also block approval.
+Discussions allow 100 comments each and 10 linked issues. Images have no content
+budgets because their bytes are
+not fetched. Changed non-image binaries, symlinks/submodules (including image-named
+objects), truncated trees, or oversized text changes block review.
 Changes to `.env*`, `.pem`, or `.key` files are blocked
 before fetching their contents for model input; unchanged such paths are omitted.
 Unsupported unchanged paths are listed for the model to
-assess whether context is sufficient. Nothing is silently cut to obtain approval.
+assess whether non-image context is sufficient. Images are explicitly out of scope.
 Jobs have a 15-minute timeout; the one model request has a 10-minute HTTP timeout
 and a 10,000-token output limit. Inaccessible fork Git objects fail closed.
 
@@ -158,22 +153,19 @@ These checks use fake GitHub/OpenAI transports, need no credentials, and spend n
 model tokens. They cover new/stale heads, rejection, metadata/context failures,
 wrong-App spoofing, bounded retries, credential scoping, tool-free/stateless
 requests, malformed/refused output, and same-head task-data cache invalidation.
-PNG checks cover structural validation, limits, version identities, inline image
-payloads, line-zero findings, and stale image revisions, without raster decoding.
+Image checks cover exclusion without fetching bytes for additions, modifications,
+renames, deletions, and image-only PRs; README text and object/credential guards
+remain covered. Transport checks verify a single text block with no image payloads.
 Actual App installation, OpenAI access, check attribution, and no-bypass merging
 must still be verified on GitHub.
 
-### Controlled logo PR
+### README logo
 
-The supplied logo remains on `docs/readme-logo`. The owner first pushes this
-PNG-support implementation, verifies CI, and deploys it onto the trusted default
-branch through the existing independent-review gates. Then refresh the logo
-branch against that base and open its controlled PR. Verify visual review of
-the actual logo, reviewer App attribution on the exact head, new CI/review after
-another owner-pushed commit, and failure blocking under the no-bypass ruleset.
-Record actual PR/check/run URLs in `docs/local-work.md`; keep hosted acceptance
-open until that evidence exists. The owner performs all pushes; agents prepare
-local changes and verified commits. Keep automatic merging disabled.
+The README logo requires no visual-review or image-validation gate. Historical
+PNG deployment evidence is retained in `png-review-acceptance-evidence.json`,
+but that behavior is superseded by image exclusion. The owner performs all
+pushes; deployment still goes through ordinary current-head CI and independent
+review. Keep automatic merging disabled.
 
 To stop new reviews, set `INDEPENDENT_REVIEW_ENABLED=false` or disable the
 workflow; cancel active runs separately. Keep the required checks in place.

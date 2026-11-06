@@ -12,7 +12,8 @@ snapshot also carries the full pooling plan and a changed ledger baseline.
 ## Decisions
 
 Reuse `compact()`/`model_content()` for accounting and transport, rather than two
-serializations. Keep inline source, separate logical PNG blocks and existing labels.
+serializations. Keep inline source; image contents are now excluded under
+`exclude-images-from-review`.
 Assemble from `4cb1791` with only this plan, compact code and focused check. Preserve
 the full pooling plan and handoffs on the pooling/backup branches and in Git;
 keep the candidate ledger at its tested base to avoid another baseline copy.

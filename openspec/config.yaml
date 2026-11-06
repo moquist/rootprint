@@ -10,6 +10,8 @@ context: |
   Work locally until the owner pushes to GitHub. Track work in docs/local-work.md;
   never claim remote automation, review gates, or publishing are active without
   verification. Preserve their requirements and report activation blockers.
+  Image contents are excluded from automated review. Do not add image validation,
+  visual inspection, or visual acceptance gates for image assets such as README logos.
 
 # Project context (optional)
 # Add only constraints that should guide OpenSpec artifacts and workflows.

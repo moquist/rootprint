@@ -248,14 +248,11 @@ push alone. You can remain at this stage for as long as you like, selecting
 issues with `ready` and merging the resulting PRs yourself. This verifies the
 manual-merge stage, not automatic merging or full autonomous maintenance.
 
-For the prepared logo PR, deploy PNG reviewer support onto the trusted default
-branch first, then refresh `docs/readme-logo` against it. The reviewer supplies
-actual inline PNG images labeled with path/blob SHA/baseline-or-head role;
-limits are 1 MiB per version, four versions/2 MiB total, 4096 pixels per side,
-and 8,000,000 pixels. It does not raster-decode images on the privileged host.
-Follow the [controlled logo acceptance sequence](docs/independent-review.md#controlled-logo-pr)
-and record visual-review, exact-head App, fresh-check, and merge-blocking evidence.
-The owner performs all pushes; keep hosted acceptance open until verified.
+Image assets such as the README logo are excluded from automated content review.
+No image validation or visual acceptance sequence is required. The reviewer still
+reviews README text and changed path metadata; see
+[image exclusion](docs/independent-review.md#review-behavior). The owner performs
+all pushes; ordinary current-head CI and independent review remain required.
 
 ## 9. Enable automatic merging later
 

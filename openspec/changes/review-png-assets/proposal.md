@@ -1,5 +1,8 @@
 # Proposal
 
+> Superseded by owner decision in `exclude-images-from-review`: images are no
+> longer reviewed or validated. The plan below records historical motivation.
+
 ## Why
 
 The owner wants the supplied Rootprint logo and a short name explanation to form
