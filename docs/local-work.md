@@ -1,5 +1,112 @@
 # Local work ledger
 
+## Latest session handoff — 2026-11-06
+
+### Owner instructions and immediate next action
+
+- The owner asked to save state and stop so a new session can resume.
+- **Do not push.** The owner explicitly performs all pushes. Local verified
+  commits remain authorized. This instruction is also recorded in `AGENTS.md`.
+- The owner subsequently authorized the agent to execute the previously supplied
+  `gh` branch-protection/settings commands. That authorization is for GitHub
+  settings, not pushing, merging, publishing, or enabling automatic merges.
+- Next: inspect the repository and existing rules through `gh`, apply the
+  approved manual-merge settings/ruleset, and verify the effective rules. No
+  remote mutation has been executed yet. The first `gh repo view` was aborted
+  when the owner requested this handoff; repository identity, current remote
+  state, and existing protections have not been inspected.
+
+### Authentication and tooling
+
+- GitHub authentication now works: `gh auth status` through Nix reported the
+  active `moquist` account using the keyring. Do not print or retrieve tokens.
+- `gh` is now on `PATH` at the global Devbox profile. Prefer plain `gh` commands.
+  If needed, the verified fallback invocation is
+  `nix --extra-experimental-features 'nix-command flakes' run nixpkgs#gh -- ...`.
+- Earlier SSH fetch/public-key failure is historical, not a reason to request
+  push credentials: the owner handles pushes. No fetch or push is needed to
+  configure GitHub branch rules.
+
+### Branches and commits
+
+- Current branch: `feat/png-review`; planning commit `24b0acd` based on local
+  `main` at `2c28616`. This handoff adds only local maintenance documentation.
+- `2c28616`: independent reviewer implementation (tool-free OpenAI review).
+- `d00496b`: isolated OpenCode issue worker implementation (manual merging).
+- `docs/readme-logo` at `c6f7adc`: owner's unchanged `rootprint-horizontal.png`,
+  README image/alt text, name semantics (Merkle root + fingerprint, pun on
+  footprint), and PR-preparation evidence. Preserve this branch and asset.
+- The PNG is 425,335 bytes, 1005 by 419 pixels. It is on the logo branch, not the
+  current support branch. The existing reviewer rejects it under its text-only
+  100,000-byte file limit. No logo PR has been created.
+- Local `main` tracks `origin/main` at `2c28616`; this is local tracking state,
+  not a newly verified remote head. The owner reported pushing and passing CI.
+
+### Approved GitHub configuration to apply
+
+- Discover repository/default branch with `gh repo view`/`gh api`. Inspect
+  existing repository/organization rulesets and branch protections first.
+- Resolve CI's actual GitHub Actions App ID from the default branch's `ci` check
+  (`/commits/{ref}/check-runs?check_name=ci&filter=latest`). Read the public numeric
+  reviewer App ID from Actions variable `REVIEWER_APP_ID`; do not read PEM keys.
+- Create/update the named repository ruleset **Rootprint default branch**,
+  target `branch`, enforcement `active`, `bypass_actors: []`, and ref condition
+  `include: ["~DEFAULT_BRANCH"]`, `exclude: []`.
+- Rules: `deletion`, `non_fast_forward`, and `pull_request` with
+  `allowed_merge_methods: ["squash"]`, `dismiss_stale_reviews_on_push: true`,
+  `require_code_owner_review: false`, `require_last_push_approval: false`,
+  `required_approving_review_count: 0`, and
+  `required_review_thread_resolution: true`.
+- Require `ci` restricted to the discovered Actions App and `independent-review`
+  restricted to the reviewer App, via `required_status_checks` entries with
+  numeric `integration_id`; set `strict_required_status_checks_policy: true`.
+- Repository settings: `allow_auto_merge=false`, `allow_squash_merge=true`.
+  Preserve unrelated protections; detect conflicting/duplicate named rulesets.
+  Missing IDs, insufficient permissions, or unsupported private-repo plan
+  enforcement must become explicit blockers, never weakened gates.
+- Verify the resulting ruleset, repository merge settings, and effective rules
+  using `/repos/{owner}/{repo}/rules/branches/{branch}`. Only claim what the API
+  actually verifies; end-to-end review/merge acceptance remains separate.
+- These fields were checked against GitHub's REST ruleset documentation, and the
+  supplied Bash command block was syntax-checked. It has not been executed live.
+
+### PNG support: planning complete, implementation not started
+
+- Change: `openspec/changes/review-png-assets/`; four planning artifacts plus
+  `.openspec.yaml` committed in `24b0acd`. All four active OpenSpec changes pass
+  `openspec validate --all --strict`; `git diff --check` passed.
+- The propose skill required stopping at the planning/apply boundary. There are
+  **0/7 PNG tasks complete**. Resume implementation only in the separate apply
+  workflow after an apply request, e.g. `/opsx-apply review-png-assets`.
+- Design: static PNGs as labeled inline Responses API `input_image` data, linked
+  to exact Git blob SHA, path, and head/baseline role. Include before/after image
+  versions and support image findings at line zero. No local raster decoding,
+  PR execution, external image URLs, tools, or credential exposure.
+- Limits: 1 MiB per version, four versions/2 MiB total decoded bytes, dimensions
+  at most 4096 per side and 8,000,000 pixels. Keep text limits unchanged. Validate
+  signature/IHDR/chunk framing/CRCs/IEND and reject animation/malformed PNGs.
+- Reuse `scripts/independent_review.py`, existing reviewer tests, and trusted
+  policy. Add no dependency; keep exact-head/freshness/App/credential guards.
+- After the owner deploys PNG support, refresh the logo branch against that
+  base and use it for the controlled approval-path PR. Keep actual hosted
+  acceptance tasks open until PR/check/run evidence is recorded.
+
+### Verification baseline and remaining activation
+
+- Latest implementation verification: `.venv/bin/python scripts/check.py` passed
+  both language suites, all 24 script checks, static checks, and strict specs.
+  Actionlint 1.7.7 passed CI, worker, and reviewer workflows. No runtime code
+  changed during PNG planning or this handoff.
+- Bootstrap remains 15/27 verified tasks complete; do not archive it. Its
+  automated-maintenance delta is the current baseline; the PNG additive delta
+  depends on synchronizing/archiving bootstrap first.
+- App installations/permissions, actual OpenAI API access, enabled variables,
+  independent check attribution, current-head invalidation, and enforced merge
+  blocking still need hosted inspection/acceptance. Do not describe them as
+  running or verified merely because authentication or CI works.
+- References: `docs/independent-review.md`, `docs/issue-worker.md`,
+  `github-automation-setup-instructions.md`, and the PNG change artifacts.
+
 ## Bootstrap
 
 - Contract: `openspec/changes/bootstrap-rootprint-ecosystem/`.
