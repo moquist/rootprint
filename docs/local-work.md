@@ -1,5 +1,24 @@
 # Local work ledger
 
+## Latest session handoff — 2026-11-06 (README CLI PR refresh)
+
+- Owner merged image-exclusion PR https://github.com/moquist/rootprint/pull/18;
+  current fetched base is `2140a18`. Exact original head `819e542` passed CI
+  https://github.com/moquist/rootprint/actions/runs/42316231446 and reviewer App
+  `5631539` approval https://github.com/moquist/rootprint/actions/runs/42316229805.
+  Hosted 1,200,000-byte text budget and image exclusion are now deployed.
+- Refreshing README/CLI PR https://github.com/moquist/rootprint/pull/14 on a
+  separate `work/readme-cli-refreshed` branch. Original published head and full
+  worker planning/implementation/completion evidence are preserved on
+  `backup/readme-cli-original` at `f3e17ed:docs/local-work.md`. The worker had
+  verified both exact stdin/API demos, integrated/package checks and strict specs;
+  the current refresh re-verifies those results before handoff.
+- Resolved the ledger conflict by retaining current main and this concise record,
+  rather than restoring superseded historical handoffs (including obsolete squash
+  and visual-review instructions). README change remains CLI-first documentation
+  only. Current-head checks and owner merge remain required; issue #12 is not
+  complete until merged. No agent push or published-history update occurred.
+
 ## Latest session handoff — 2026-11-06 (PR #18 refresh verified locally)
 
 - Owner rebase-merged budget PR https://github.com/moquist/rootprint/pull/19;
