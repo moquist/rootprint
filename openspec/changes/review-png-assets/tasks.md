@@ -32,6 +32,12 @@
 
 ## Hosted logo acceptance — verified 2026-11-06
 
+Captured API check outputs, full head SHAs, App identities, live blocked-state
+observations, and effective no-bypass rules are included in
+[`docs/png-review-acceptance-evidence.json`](../../../docs/png-review-acceptance-evidence.json).
+These captured contents supplement the links below; historical mergeability is
+identified as an observed snapshot, not a state that can be re-fetched today.
+
 - PR: https://github.com/moquist/rootprint/pull/10. Initial head `6dba341` passed visual review from App `5631539`; the review explicitly inspected the PNG motif/wordmark: https://github.com/moquist/rootprint/actions/runs/42172497614. Initial CI passed: https://github.com/moquist/rootprint/actions/runs/42172498444. GitHub reported `CLEAN`/`MERGEABLE`.
 - Owner pushed alt-text commit `1c1c2e58fb3699c0598a7fc5b96e1915740039c6`. API inspection captured `BLOCKED` with new-head checks pending and no inherited reviewer approval.
 - Fresh CI succeeded from Actions App `15368`: https://github.com/moquist/rootprint/actions/runs/42172939856. Fresh review failed HTTP 429 from App `5631539`: https://github.com/moquist/rootprint/actions/runs/42172937250. GitHub remained `BLOCKED` after CI succeeded; old-head approval did not satisfy the new-head review gate.
