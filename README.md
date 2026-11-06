@@ -1,8 +1,14 @@
 # Rootprint
 
+![Rootprint logo: a tree growing from a fingerprint-shaped footprint](rootprint-horizontal.png)
+
 Rootprint provides deterministic, versioned Merkle hashing for JSON, with
 bring-your-own hash functions. Initial implementations: **TypeScript and Python**.
 Rust is planned after these implementations pass the same conformance vectors.
+
+The name combines **root**, a Merkle tree's root hash (SHA-256 by default), with
+**print**, a fingerprint of the data. Together, **Rootprint** is a play on
+**footprint**: a compact mark representing a whole JSON document.
 
 - Objects sort by RFC 8785 UTF-16 key order; arrays preserve order.
 - Numbers use finite IEEE-754 binary64 semantics (not exact arbitrary precision).

@@ -372,6 +372,26 @@ ownership and publishing identity are separate release prerequisites.
   Manual merging remains the initial rollout. No live App/model request, push,
   remote configuration change, merge, or publication was performed this session.
 
+## README logo controlled PR preparation
+
+- The owner supplied `rootprint-horizontal.png` and requested a README logo plus
+  the name's meaning: Merkle root hash, data fingerprint, and a play on footprint.
+  The original image is included unchanged, with descriptive README alt text.
+- Prepared branch: `docs/readme-logo`, based on `2c28616`. The intended PR contains
+  the README, supplied logo, and this preparation/activation evidence.
+- Verification: the image renders through the local image reader;
+  `.venv/bin/python scripts/check.py` passes both language suites, all 24 script
+  checks, static checks, and strict OpenSpec validation. Whitespace checks pass.
+- Remote blocker: `git fetch --quiet origin` fails with GitHub SSH public-key
+  authentication denied. GitHub CLI is available through Nix, but `gh auth status`
+  reports no authenticated GitHub host. No push or PR creation has occurred.
+  Account-owner authentication is needed before publishing this test branch.
+- Review compatibility: the supplied PNG is 425,335 bytes. The current reviewer
+  accepts only UTF-8 text up to 100,000 bytes per file, so it will fail closed on
+  this asset. This PR can test that blocking path; positive image review requires
+  a separately authorized PNG-support change. Do not bypass the required check
+  or represent this documentation change as a completed hosted acceptance run.
+
 ## Rootprint rename and versioned labels
 
 - Contracts: `openspec/changes/rename-rootprint/` and
