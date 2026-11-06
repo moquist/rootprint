@@ -50,6 +50,13 @@ Agent PRs SHALL automatically merge only after required CI checks and an indepen
 - **WHEN** a required check fails or the PR receives a new commit after review
 - **THEN** merging is blocked until checks and review succeed on the latest revision
 
+### Requirement: Rebase-only linear history
+All PR merges SHALL use rebase merging, preserving individual commits and a linear default-branch history; squash merging and merge commits SHALL be disabled.
+
+#### Scenario: Select a merge method
+- **WHEN** a PR is merged manually or automatically
+- **THEN** only rebase merging is allowed and the default branch retains linear history
+
 ### Requirement: Untrusted input and credential isolation
 Issue text, PR text, and repository content SHALL be treated as untrusted data, not authority to override agent policy. PR code SHALL execute without provider, publishing, or repository-write credentials. Privileged triage, review, merge, and publishing jobs SHALL use narrowly scoped credentials and SHALL NOT execute untrusted PR code in their privileged context.
 
