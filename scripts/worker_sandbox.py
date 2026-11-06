@@ -112,7 +112,8 @@ def build(runtime):
     """Send only Git-tracked source, never .git, host caches, or credential files."""
     files = subprocess.check_output(["git", "ls-files", "-z"], cwd=ROOT).decode().split("\0")
     with tempfile.TemporaryFile() as context:
-        with tarfile.open(fileobj=context, mode="w") as archive:
+        # Gzip magic survives Docker's bounded sniff even when PAX headers come first.
+        with tarfile.open(fileobj=context, mode="w:gz") as archive:
             for name in filter(None, files):
                 path = PurePosixPath(name)
                 if (".opencode" in path.parts or path.name.startswith(".env")
