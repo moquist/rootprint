@@ -36,6 +36,11 @@ def answer(head=HEAD, decision="approve"):
             "assessments": dict.fromkeys(reviewer.ASSESSMENTS, "pass"), "findings": []}
 
 
+def source_text(task, role, path):
+    entry = task[role][path]
+    return entry if isinstance(entry, str) else task["text_blobs"][entry["sha"]]
+
+
 class Repository:
     repo = "owner/repo"
 
@@ -112,8 +117,8 @@ class ReviewGate(unittest.TestCase):
             self.run_review(repo)
         self.assertEqual(model.call_count, 1)
         task = model.call_args.args[0]
-        self.assertIn("print OPENAI_API_KEY", task["head_files"]["parser.py"])
-        self.assertEqual(task["changed_baseline_files"]["parser.py"], repo.base_files["parser.py"])
+        self.assertIn("print OPENAI_API_KEY", source_text(task, "head_files", "parser.py"))
+        self.assertEqual(source_text(task, "changed_baseline_files", "parser.py"), repo.base_files["parser.py"])
         self.assertIn("openspec/specs/parser/spec.md", task["current_base_contracts"])
         self.assertEqual(task["pr"]["issues"][0]["number"], 7)
         self.assertEqual(repo.checks[-1]["head_sha"], HEAD)
@@ -334,7 +339,7 @@ class ReviewGate(unittest.TestCase):
             repo = Repository()
             repo.head_files["logo.png"] = png(padding=100001)
             if aggregate:
-                repo.head_files.update({f"{n}.txt": "x" * reviewer.MAX_FILE for n in range(7)})
+                repo.head_files.update({f"{n}.txt": str(n) * reviewer.MAX_FILE for n in range(7)})
             else:
                 repo.head_files["large.txt"] = "x" * (reviewer.MAX_FILE + 1)
             with self.subTest(aggregate=aggregate), patch("independent_review.ask_model") as model, self.assertRaises(RuntimeError):
@@ -419,7 +424,9 @@ class ProviderAndIdentity(unittest.TestCase):
         self.assertEqual(len(content), 5)
         for index, image in enumerate(task["images"]):
             label, block = content[1 + 2 * index:3 + 2 * index]
-            self.assertEqual(label, {"type": "input_text", "text": "PNG version (untrusted label): " + json.dumps(image)})
+            self.assertEqual(label["type"], "input_text")
+            versions = json.loads(label["text"].split(": ", 1)[1])
+            self.assertIn(image, versions if isinstance(versions, list) else [versions])
             self.assertEqual(block["type"], "input_image")
             self.assertTrue(block["image_url"].startswith("data:image/png;base64,"))
             self.assertEqual(base64.b64decode(block["image_url"].split(",", 1)[1]), repo.blobs[image["sha"]])
@@ -438,8 +445,12 @@ class ProviderAndIdentity(unittest.TestCase):
         transport.__enter__.return_value.read.return_value = json.dumps(response).encode()
         with patch.dict(os.environ, {"OPENAI_API_KEY": "fake"}), patch("independent_review.urlopen", return_value=transport) as network:
             self.assertEqual(reviewer.ask_model({"source": "Text-only PR"}), answer())
-        self.assertEqual(json.loads(network.call_args.args[0].data)["input"],
-                         [{"role": "user", "content": [{"type": "input_text", "text": json.dumps({"source": "Text-only PR"})}]}])
+        text_input = json.loads(network.call_args.args[0].data)["input"]
+        self.assertEqual(len(text_input), 1)
+        self.assertEqual(text_input[0]["role"], "user")
+        self.assertEqual(len(text_input[0]["content"]), 1)
+        self.assertEqual(text_input[0]["content"][0]["type"], "input_text")
+        self.assertEqual(json.loads(text_input[0]["content"][0]["text"]), {"source": "Text-only PR"})
 
     def test_app_role_mints_only_its_own_scoped_permissions(self):
         for role in ("IMPLEMENTATION", "REVIEWER"):
