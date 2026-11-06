@@ -1,5 +1,32 @@
 # Local work ledger
 
+## Latest session handoff — 2026-11-06 (PR #18 refresh verified locally)
+
+- Owner rebase-merged budget PR https://github.com/moquist/rootprint/pull/19;
+  fetched trusted main is `3765527b14e0643664d927fd10f1ed91ee5a70ac`.
+  CI: https://github.com/moquist/rootprint/actions/runs/42314589222.
+  Reviewer App `5631539` approved original exact PR head
+  `be5544cd8bb69143a927a33f00163c206e2484bd`:
+  https://github.com/moquist/rootprint/actions/runs/42314589003.
+- PR #18's published head remains `afc0ccd0a5546fa7db7c69cb2ebd33018ddd9c23`.
+  Prepared a separate local `work/exclude-image-review-refreshed` branch on the
+  merged budget base; image-exclusion replay commit is `cf0d679`. Original local
+  and remote `feat/exclude-image-review` were preserved. The only rebase conflict
+  was reviewer documentation: retain 1,200,000 hosted/600,000 standalone text
+  budgets and remove all image-content budgets/validation requirements.
+- Credential-free integrated checks pass both ports, 31 script checks, Ruff and
+  all seven strict changes; whitespace passes. The deployed trusted coordinator
+  and actual hosted entrypoint accept the exact refreshed snapshot at 702,989
+  bytes including 8,192-byte discussion allowance, leaving 497,011 bytes.
+  Replay uses immutable Git data and no model request/PR-code execution:
+  `/tmp/opencode/replay_refreshed_pr18.py`. A later documentation-only evidence
+  commit is measured separately before handoff.
+- Updating existing PR #18 to this rebased history requires owner authorization
+  for a force-with-lease update; agents still do not push. No published branch,
+  PR, check, settings, or required gate was mutated. Fresh current-head CI and
+  reviewer App acceptance remain required after owner publication; budget task
+  1.3 remains open until those hosted results exist.
+
 ## Current handoff — 2026-11-06
 
 - Owner approved `exclude-images-from-review`: remove PNG parsing, visual input,

@@ -130,9 +130,9 @@ earlier 600,000-byte deployment limit; it is an operational budget, not a measur
 model token-capacity claim. All overflow still blocks without truncation.
 Pooling/scoping remain planned reductions in total input and repeated review cost.
 Discussions allow 100 comments each and 10 linked issues. Images have no content
-budgets because their bytes are
-not fetched. Changed non-image binaries, symlinks/submodules (including image-named
-objects), truncated trees, or oversized text changes block review.
+budgets because their bytes are not fetched. Changed non-image binaries,
+symlinks/submodules (including image-named objects), truncated trees, or oversized
+text changes block review.
 Changes to `.env*`, `.pem`, or `.key` files are blocked
 before fetching their contents for model input; unchanged such paths are omitted.
 Unsupported unchanged paths are listed for the model to
