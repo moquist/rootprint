@@ -1,6 +1,6 @@
 # Rootprint
 
-![Rootprint logo: a tree growing from a fingerprint-shaped footprint](rootprint-horizontal.png)
+![Rootprint wordmark beside a tree growing from a fingerprint-shaped footprint](rootprint-horizontal.png)
 
 Rootprint provides deterministic, versioned Merkle hashing for JSON, with
 bring-your-own hash functions. Initial implementations: **TypeScript and Python**.
