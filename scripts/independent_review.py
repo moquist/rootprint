@@ -8,8 +8,10 @@ import json
 import os
 from pathlib import Path
 import re
+import struct
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
+import zlib
 
 from issue_worker import ApiError, GitHub, app_client
 from worker_agent import MODEL
@@ -18,6 +20,9 @@ ROOT = Path(__file__).resolve().parents[1]
 CHECK = "independent-review"
 MAX_CONTEXT = 600000
 MAX_FILE = 100000
+MAX_IMAGE = 1024 * 1024
+MAX_IMAGES = 4
+MAX_IMAGE_BYTES = 2 * 1024 * 1024
 ASSESSMENTS = ("acceptance", "regression", "error_paths", "compatibility", "trust_boundaries")
 SCHEMA = {
     "type": "object", "additionalProperties": False,
@@ -94,6 +99,54 @@ def tree(client, commit):
     return {entry["path"]: entry for entry in response["tree"] if entry["type"] != "tree"}
 
 
+def png_dimensions(raw):
+    """Inspect static PNG framing only; the provider, never this host, decodes pixels."""
+    if len(raw) > MAX_IMAGE or not raw.startswith(b"\x89PNG\r\n\x1a\n"):
+        raise ValueError("Invalid PNG signature or image size")
+    offset, chunks, image_bytes = 8, set(), 0
+    width = height = color = 0
+    previous = None
+    while offset < len(raw):
+        if offset + 12 > len(raw):
+            raise ValueError("Truncated PNG chunk")
+        length, kind = struct.unpack_from(">I4s", raw, offset)
+        end = offset + 12 + length
+        if end > len(raw) or not re.fullmatch(rb"[A-Za-z]{2}[A-Z][A-Za-z]", kind):
+            raise ValueError("Invalid PNG chunk framing")
+        payload = raw[offset + 8:end - 4]
+        if zlib.crc32(raw[offset + 4:end - 4]) != struct.unpack_from(">I", raw, end - 4)[0]:
+            raise ValueError("Invalid PNG chunk CRC")
+        if not chunks and kind != b"IHDR":
+            raise ValueError("PNG must start with IHDR")
+        if kind in (b"acTL", b"fcTL", b"fdAT"):
+            raise ValueError("Animated PNG is unsupported")
+        if kind == b"IHDR":
+            if chunks or length != 13:
+                raise ValueError("Invalid PNG IHDR")
+            width, height, depth, color, compression, filtering, interlace = struct.unpack(">IIBBBBB", payload)
+            depths = {0: (1, 2, 4, 8, 16), 2: (8, 16), 3: (1, 2, 4, 8), 4: (8, 16), 6: (8, 16)}
+            if (not 0 < width <= 4096 or not 0 < height <= 4096 or width * height > 8000000
+                    or depth not in depths.get(color, ()) or compression or filtering or interlace not in (0, 1)):
+                raise ValueError("Invalid or excessive PNG dimensions/header")
+        elif kind == b"PLTE":
+            if (kind in chunks or b"IDAT" in chunks or color in (0, 4) or not 0 < length <= 768
+                    or length % 3 or (color == 3 and length // 3 > 2 ** depth)):
+                raise ValueError("Invalid PNG palette")
+        elif kind == b"IDAT":
+            if (b"IDAT" in chunks and previous != b"IDAT") or (color == 3 and b"PLTE" not in chunks):
+                raise ValueError("Invalid PNG image-data ordering")
+            image_bytes += length
+        elif kind == b"IEND":
+            if length or not image_bytes or end != len(raw):
+                raise ValueError("Invalid PNG terminal structure")
+            return width, height
+        elif kind[0] < ord("a"):
+            raise ValueError("Unsupported critical PNG chunk")
+        chunks.add(kind)
+        previous, offset = kind, end
+    raise ValueError("PNG has no terminal IEND")
+
+
 def context(client, data):
     def credential_path(path):
         name = path.rsplit("/", 1)[-1]
@@ -111,25 +164,50 @@ def context(client, data):
         raise ValueError("Credential-file changes cannot be sent to the review model")
     cache = {}
 
-    def text(entry):
+    def blob_bytes(entry, limit):
         if entry["type"] != "blob" or entry["mode"] not in ("100644", "100755"):
             raise ValueError("Unsupported symlink or submodule in review context")
-        if entry.get("size", MAX_FILE + 1) > MAX_FILE:
+        if not 0 <= entry.get("size", limit + 1) <= limit:
             raise ValueError("File exceeds review size limit")
         object_id = sha(entry["sha"])
         if object_id not in cache:
             blob = client.api("GET", "/git/blobs/" + object_id)
-            if blob["encoding"] != "base64":
+            if blob["encoding"] != "base64" or blob.get("size", entry["size"]) != entry["size"]:
                 raise ValueError("Unsupported Git blob encoding")
-            raw = base64.b64decode(blob["content"].replace("\n", "").replace("\r", ""), validate=True)
-            if len(raw) > MAX_FILE:
+            encoded = blob["content"].replace("\n", "").replace("\r", "")
+            if len(encoded) > 4 * ((limit + 2) // 3):
                 raise ValueError("File exceeds review size limit")
-            cache[object_id] = raw.decode("utf-8")
+            cache[object_id] = base64.b64decode(encoded, validate=True)
+        if len(cache[object_id]) > limit or len(cache[object_id]) != entry["size"]:
+            raise ValueError("Git blob size does not match bounded tree entry")
         return cache[object_id]
+
+    def text(entry):
+        raw = blob_bytes(entry, MAX_FILE)
+        if b"\0" in raw:
+            raise ValueError("Unsupported binary in review context")
+        return raw.decode("utf-8")
+
+    images, image_data = [], {}
+    image_bytes = 0
+    for role, entries in (("baseline", before), ("head", after)):
+        for path in changed:
+            if path.lower().endswith(".png") and path in entries:
+                entry = entries[path]
+                if len(images) >= MAX_IMAGES or image_bytes + entry.get("size", MAX_IMAGE + 1) > MAX_IMAGE_BYTES:
+                    raise ValueError("PNG image count or aggregate byte limit exceeded")
+                raw = blob_bytes(entry, MAX_IMAGE)
+                width, height = png_dimensions(raw)
+                image_bytes += len(raw)
+                images.append({"path": path, "sha": entry["sha"], "role": role, "mode": entry["mode"],
+                               "width": width, "height": height, "size": len(raw)})
+                image_data[entry["sha"]] = base64.b64encode(raw).decode("ascii")
 
     # Include complete source for callers, not only a possibly truncated API patch.
     head_files, omitted = {}, []
     for path, entry in sorted(after.items()):
+        if path.lower().endswith(".png") and path in changed:
+            continue
         if credential_path(path) or (path.startswith(".opencode/") and path not in changed):
             omitted.append(path)
             continue
@@ -141,7 +219,7 @@ def context(client, data):
             if path in changed:
                 raise
             omitted.append(path)
-    baseline = {path: text(before[path]) for path in changed if path in before}
+    baseline = {path: text(before[path]) for path in changed if path in before and not path.lower().endswith(".png")}
     # Current base contracts may have advanced since the branch's merge-base.
     current_base = tree(client, data["base"]) if data["base"] != merge_base else before
     contracts = {path: text(entry) for path, entry in current_base.items()
@@ -151,16 +229,17 @@ def context(client, data):
     changes = [{"path": path, "before_mode": before.get(path, {}).get("mode"),
                 "after_mode": after.get(path, {}).get("mode")} for path in changed]
     result = {"pr": data, "merge_base": merge_base, "changes": changes,
-              "head_files": head_files, "changed_baseline_files": baseline,
+              "head_files": head_files, "changed_baseline_files": baseline, "images": images,
               "current_base_contracts": contracts, "omitted_unchanged_paths": omitted,
               "ci_evidence": [{"name": c["name"], "app": c["app"]["slug"], "head_sha": c["head_sha"],
                                "status": c["status"], "conclusion": c.get("conclusion")} for c in checks]}
     if len(json.dumps(result).encode()) > MAX_CONTEXT:
         raise ValueError("Complete review context exceeds size limit; no content was silently truncated")
+    result["image_data"] = image_data
     return result
 
 
-def validate_result(result, data, files):
+def validate_result(result, data, files, image_paths=()):
     if not isinstance(result, dict) or set(result) != set(SCHEMA["required"]):
         raise ValueError("Incomplete structured review")
     if result["reviewed_head"] != data["head"] or result["reviewed_base"] != data["base"]:
@@ -177,8 +256,9 @@ def validate_result(result, data, files):
         raise ValueError("Invalid review findings")
     for finding in findings:
         if (not isinstance(finding, dict) or set(finding) != {"severity", "path", "line", "message"}
-                or finding["severity"] not in ("blocking", "warning") or finding["path"] not in ("", *files)
+                or finding["severity"] not in ("blocking", "warning") or finding["path"] not in ("", *files, *image_paths)
                 or type(finding["line"]) is not int or finding["line"] < 0
+                or (finding["path"] in image_paths and finding["line"] != 0)
                 or not isinstance(finding["message"], str) or not 1 <= len(finding["message"].strip()) <= 1500):
             raise ValueError("Invalid review finding")
     if result["decision"] == "approve" and ("fail" in assessments.values()
@@ -190,8 +270,14 @@ def validate_result(result, data, files):
 def ask_model(task_data):
     if not os.environ.get("OPENAI_API_KEY"):
         raise ValueError("Missing configuration: OPENAI_API_KEY")
+    content = [{"type": "input_text", "text": json.dumps({k: v for k, v in task_data.items() if k != "image_data"})}]
+    for image in task_data.get("images", []):
+        content.extend([
+            {"type": "input_text", "text": "PNG version (untrusted label): " + json.dumps(image)},
+            {"type": "input_image", "image_url": "data:image/png;base64," + task_data["image_data"][image["sha"]]},
+        ])
     payload = {"model": MODEL.removeprefix("openai/"), "store": False, "tools": [], "tool_choice": "none",
-               "max_output_tokens": 10000, "instructions": policy(), "input": json.dumps(task_data),
+               "max_output_tokens": 10000, "instructions": policy(), "input": [{"role": "user", "content": content}],
                "text": {"format": {"type": "json_schema", "name": "independent_review", "strict": True, "schema": SCHEMA}}}
     request = Request("https://api.openai.com/v1/responses", data=json.dumps(payload).encode(), method="POST",
                       headers={"Authorization": "Bearer " + os.environ["OPENAI_API_KEY"], "Content-Type": "application/json"})
@@ -275,7 +361,8 @@ def review(client, reader, bot, number, retry=False):
             raise ValueError("Reviewer App cannot approve its own PR")
         task_data = context(client, data)
         files = task_data["head_files"].keys() | task_data["changed_baseline_files"].keys()
-        result = validate_result(ask_model(task_data), data, files)
+        image_paths = {image["path"] for image in task_data["images"]}
+        result = validate_result(ask_model(task_data), data, files, image_paths)
         if metadata(client, reader, number) != data:
             raise ValueError("PR head, base, or material task data changed during review; result is stale")
         assessments = "\n".join(f"- {name}: {result['assessments'][name]}" for name in ASSESSMENTS)
