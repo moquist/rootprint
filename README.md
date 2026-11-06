@@ -59,6 +59,15 @@ They verify isolation, the real OpenCode/MCP connection, and offline integrated
 and packaged CLI checks. For rootless Podman, add `--runtime podman` to both
 commands. See [worker setup and operation](docs/issue-worker.md).
 
+The standard `scripts/check.py` command also includes the credential-free
+independent-reviewer checks. To run those alone:
+
+```sh
+python3 -m unittest discover -s scripts -p test_independent_review.py
+```
+
+See [reviewer setup and check attribution](docs/independent-review.md).
+
 ## Simple usage
 
 Run setup above first. Packages are not yet published, so these examples use the
@@ -135,8 +144,11 @@ cannot demonstrate them or provide unattended GitHub maintenance.
 Run `python scripts/activation.py` for outstanding requirements. The
 [issue worker](docs/issue-worker.md) is implemented for owner-selected issues and
 manual merging, with OpenAI GPT-6.1 Sol and isolated code execution. Its workflow
-is disabled by default and still needs controlled hosted verification. Independent
-review, automatic merging, and releases remain separate integrations. See
+is disabled by default and still needs controlled hosted verification. The
+[independent reviewer](docs/independent-review.md) is implemented with a separate
+App and tool-free model requests; it also remains disabled until owner activation
+and controlled hosted verification. Automatic merging and releases remain
+separate integrations. See
 [automation activation](docs/automation.md).
 
 ## License

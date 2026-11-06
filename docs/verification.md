@@ -33,5 +33,9 @@ disposable copy; it never mutates the working source.
 
 The prepared GitHub workflow runs both language suites and integration checks on
 Ubuntu, macOS, and Windows with Node 22/Python 3.11, plus Ubuntu Node 24/Python
-3.14. Required aggregate status: `ci`. Independent automated review will be
-`independent-review` once implemented and verified; it is not currently active.
+3.14. Required aggregate status: `ci`. The owner reports that hosted CI passed
+after pushing the worker implementation; that report is recorded in the ledger,
+without claiming independently inspected run URLs here. The implemented
+[independent reviewer](independent-review.md) publishes `independent-review`
+through its own App after activation. Local checks cover review decisions and
+SHA freshness; hosted App attribution and merge enforcement remain unverified.

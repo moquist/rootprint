@@ -8,21 +8,24 @@ credentials). `--require-active` exits nonzero while autonomy is inactive.
 
 Prepared locally: spec-driven agent instructions, shared verification, a
 read-only CI matrix, issue forms, weekly Dependabot configuration, and an
-[issue worker](issue-worker.md) with isolated OpenCode execution. **No
+[issue worker](issue-worker.md) with isolated OpenCode execution, and a tool-free
+[independent reviewer](independent-review.md). **No
 unattended issue worker, independent PR reviewer, auto-merger, release bot, or
 publisher is verified as running.** The worker is disabled by default and needs
-controlled hosted verification. Reviewer, merge, and release integrations still
-need implementation and live verification; pushing alone does not complete
-autonomous maintenance.
+controlled hosted verification. The reviewer is also disabled by default and
+awaits App/OpenAI/check-enforcement acceptance. Merge and release integrations
+still need implementation and live verification. The owner reports that CI passed
+after pushing the worker; that does not activate autonomous maintenance.
 
 ## What local operation gives up
 
 AI can implement and verify changes during interactive sessions. It is not
 listening for reports or repairing failures while no agent session is running.
 `docs/local-work.md` substitutes for an issue ledger until GitHub is available.
-Only this host has executed tests; Windows/macOS, minimum supported runtimes,
-GitHub event delivery, isolation, App permissions, and merge enforcement remain
-unverified. There is also no remote backup until the owner pushes.
+The owner has now pushed and reports successful hosted CI. Recorded local test
+results remain separate from that owner report. GitHub event delivery, hosted
+worker/reviewer isolation, App permissions, and merge enforcement still need a
+controlled acceptance run with recorded links.
 
 These are activation gaps, not permission to weaken the specified gates.
 
@@ -41,9 +44,11 @@ These are activation gaps, not permission to weaken the specified gates.
    credentials outside credential-free code-execution sandboxes, and verify
    that isolation with adversarial issue content. Do not simply run an
    unrestricted agent shell beside write/publishing credentials.
-5. Implement fresh-context automated review producing **`independent-review`**
+5. Configure the implemented fresh-context automated review producing **`independent-review`**
    on the exact PR head SHA. The reviewer reads diffs as untrusted data, without
-   executing PR code. New commits invalidate prior review/check evidence.
+   executing PR code. New commits invalidate prior review/check evidence. Follow
+   [the reviewer setup guide](independent-review.md) to install the separate App,
+   enable a controlled run, and verify its check source.
 6. Configure a no-bypass branch ruleset requiring `ci` and `independent-review`,
    with normal human PR approval not required. Never temporarily drop the review
    requirement to make a not-yet-integrated bot merge.

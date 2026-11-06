@@ -1,0 +1,87 @@
+name: Independent review
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, edited, ready_for_review, converted_to_draft]
+  schedule:
+    - cron: '9,39 * * * *'
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: 'PR number (0 reconciles all open PRs)'
+        type: number
+        default: 0
+      retry:
+        description: 'Retry a blocked review (at most three attempts per exact context)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+jobs:
+  discover:
+    if: vars.INDEPENDENT_REVIEW_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      prs: ${{ steps.discover.outputs.prs }}
+    steps:
+      # Never check out or execute the PR, including fork PRs.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.11'
+      - id: discover
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ inputs.pr || 0 }}
+        run: |
+          prs=$(python scripts/independent_review.py discover --pr "$PR_NUMBER")
+          printf 'prs=%s\n' "$prs" >> "$GITHUB_OUTPUT"
+
+  review:
+    needs: discover
+    if: needs.discover.outputs.prs != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        pr: ${{ fromJSON(needs.discover.outputs.prs) }}
+    concurrency:
+      group: rootprint-independent-review-${{ matrix.pr }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.11'
+      - id: source
+        name: Record trusted orchestration revision
+        run: printf 'sha=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Review immutable PR data (no PR code execution)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          REVIEWER_APP_ID: ${{ vars.REVIEWER_APP_ID }}
+          REVIEWER_APP_PRIVATE_KEY: ${{ secrets.REVIEWER_APP_PRIVATE_KEY }}
+          IMPLEMENTATION_APP_ID: ${{ vars.IMPLEMENTATION_APP_ID }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          REVIEW_SOURCE_SHA: ${{ steps.source.outputs.sha }}
+          PR_NUMBER: ${{ matrix.pr }}
+          RETRY_REVIEW: ${{ github.event_name == 'workflow_dispatch' && inputs.retry }}
+        run: |
+          if [ "$RETRY_REVIEW" = true ]; then
+            python scripts/independent_review.py run --pr "$PR_NUMBER" --retry
+          else
+            python scripts/independent_review.py run --pr "$PR_NUMBER"
+          fi

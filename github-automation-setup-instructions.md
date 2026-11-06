@@ -9,7 +9,8 @@ This is a staged rollout toward the specified fully automated workflow.
 
 The repository contains CI, issue forms, and an issue worker that is disabled by
 default and still needs controlled hosted verification. The independent reviewer
-and merge integration still need implementation and live verification.
+is also implemented and disabled by default; its App attribution and merge gates
+need live verification. Automatic merging remains a later integration.
 
 ## Rollout stages
 
@@ -108,6 +109,14 @@ Create a separate reviewer App with read access to contents and pull requests,
 and write access to checks. It will produce **`independent-review`**. Keep its
 credential out of the implementation worker.
 
+Store its PEM as Actions secret **`REVIEWER_APP_PRIVATE_KEY`** and its App ID as
+Actions variable **`REVIEWER_APP_ID`**. After deploying the reviewer, set variable
+**`INDEPENDENT_REVIEW_ENABLED=true`** for a controlled PR. It uses the existing
+**`OPENAI_API_KEY`**, with a fresh tool-free GPT-6.1 Sol request. See
+[reviewer setup](docs/independent-review.md) for exact permissions, checks,
+retry behavior, and hosted acceptance steps. The reviewer workflow does not
+receive the implementation App's private key.
+
 Provision model access and a spending limit for the trusted orchestration
 service. Installing Apps and provisioning credentials are account-owner setup
 steps. The worker uses OpenAI **GPT-6.1 Sol** (`openai/gpt-6.1-sol`). Store the
@@ -195,7 +204,8 @@ the exact PR head SHA and rerun review after each new commit.
 
 ## 7. Configure merge gates
 
-After the reviewer integration can publish its check, open
+After verifying the reviewer App publishes `independent-review` on a controlled
+PR's head SHA, open
 **Settings → Rules → Rulesets** and protect `main` with:
 
 - Require a pull request.

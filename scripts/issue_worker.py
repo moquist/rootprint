@@ -65,16 +65,24 @@ class GitHub:
         raise RuntimeError("GitHub pagination limit reached")
 
 
-def app_client():
+APP_PERMISSIONS = {
+    "IMPLEMENTATION": {"contents": "write", "issues": "write", "pull_requests": "write"},
+    "REVIEWER": {"contents": "read", "pull_requests": "read", "checks": "write"},
+}
+
+
+def app_client(role="IMPLEMENTATION"):
+    permissions = APP_PERMISSIONS[role]
+
     def b64(data):
         return base64.urlsafe_b64encode(data).rstrip(b"=")
 
     now = int(time.time())
     jwt = b64(b'{"alg":"RS256","typ":"JWT"}') + b"." + b64(json.dumps(
-        {"iat": now - 60, "exp": now + 540, "iss": os.environ["IMPLEMENTATION_APP_ID"]}).encode())
+        {"iat": now - 60, "exp": now + 540, "iss": os.environ[f"{role}_APP_ID"]}).encode())
     # NamedTemporaryFile is private (0600); it is never mounted into the sandbox.
     with tempfile.NamedTemporaryFile() as key:
-        key.write(os.environ["IMPLEMENTATION_APP_PRIVATE_KEY"].encode())
+        key.write(os.environ[f"{role}_APP_PRIVATE_KEY"].encode())
         key.flush()
         signature = subprocess.run(["openssl", "dgst", "-sha256", "-sign", key.name], input=jwt,
                                    capture_output=True, check=True).stdout
@@ -83,7 +91,7 @@ def app_client():
     installation = client.api("GET", "/installation")
     token = client.request("POST", f"/app/installations/{installation['id']}/access_tokens", {
         "repositories": [client.repo.split("/")[1]],
-        "permissions": {"contents": "write", "issues": "write", "pull_requests": "write"},
+        "permissions": permissions,
     })
     return GitHub(token["token"], client.repo), app["slug"] + "[bot]"
 

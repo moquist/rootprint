@@ -1,8 +1,9 @@
 # Issue worker: setup and operation
 
 The initial implementation prepares PRs for **manual merging**. It does not merge,
-enable auto-merge, approve its own PRs, or publish packages. The independent reviewer
-is a separate integration and still needs implementation. Keep `ci` and
+enable auto-merge, approve its own PRs, or publish packages. The
+[independent reviewer](independent-review.md) is implemented separately and needs
+owner activation plus hosted verification. Keep `ci` and
 `independent-review` required before merging any worker PR.
 
 ## Configure GitHub
@@ -39,8 +40,8 @@ The existing Actions allowlist (`actions/checkout`, `actions/setup-node`, and
 ## First controlled run
 
 1. Confirm hosted `ci` succeeds. Configure the no-bypass merge gates and the
-   independent reviewer before merging worker PRs; its integration remains a
-   separate activation prerequisite.
+   independent reviewer before merging worker PRs; its App credentials and enabled
+   workflow remain separate activation prerequisites.
 2. Enable the worker with `ISSUE_WORKER_ENABLED=true`. This enables report triage
    and scheduled reconciliation; it does **not** authorize implementation of
    every issue.

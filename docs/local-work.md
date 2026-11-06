@@ -63,11 +63,14 @@ ownership and publishing identity are separate release prerequisites.
 
 ## Remaining work
 
-- CI workflow is written and linted, but its live matrix is unverified (task 4.1).
+- The owner reports pushing the worker and passing hosted CI. Recorded run URLs
+  and independently inspected matrix evidence remain pending (task 4.1).
 - Issue-worker orchestration, durable attempt accounting, and failure tracking
   are implemented locally; controlled hosted acceptance remains pending (group 5).
-  Independent review, automatic merging, and publishing still require
-  implementation and live verification (groups 6–7).
+  The independent reviewer is also implemented locally; its hosted check
+  attribution and no-bypass merge enforcement remain pending (group 6).
+  Automatic merging and publishing still need implementation and live
+  verification (groups 6–7).
 - No remote activation acceptance run has occurred (task 8.1). Pushing alone
   enables the prepared CI, not the missing worker/review/merge integrations.
 - Do not archive bootstrap or claim autonomous maintenance is complete.
@@ -140,6 +143,60 @@ ownership and publishing identity are separate release prerequisites.
 - Setup and local reproduction: `docs/issue-worker.md`, primary README commands,
   and `github-automation-setup-instructions.md`. Limits and offline dependency
   behavior are documented. Bootstrap cannot yet be archived.
+
+## Independent reviewer implementation
+
+- Contract: bootstrap task 6.1 and the independently gated merging/credential
+  isolation requirements. The owner reports pushing `d00496b` and passing hosted
+  CI; no run URL was supplied or independently inspected in this session.
+- Implemented `.github/workflows/independent-review.yml`, a fixed trusted review
+  policy, and `scripts/independent_review.py`. A separate reviewer App publishes
+  `independent-review` on the exact PR head SHA. The shared App-token helper now
+  selects explicit implementation/reviewer roles, preserving worker permissions
+  and restricting reviewer tokens to contents/PR read plus checks write.
+- Review uses a new, tool-free OpenAI Responses request for GPT-6.1 Sol, with
+  strict structured output, no prior conversation, and response storage disabled.
+  Only task data is sent; App keys/tokens are never put in the prompt. The reviewer
+  workflow never references the implementation private key and never executes PR
+  code. Privileged checkout is explicitly the trusted default branch; source
+  snapshots are immutable API blob data, not executable host files.
+- Review input includes supported head source/callers, changed baseline files
+  and modes, baseline contracts, linked issue discussions, PR discussions, and
+  current-head CI evidence. Unsupported/oversized/truncated input fails closed.
+  Changed `.env*`/`.pem`/`.key` paths are blocked before model input; a runnable
+  failing check demonstrated the need for that guard before it was added.
+- Approvals require matching head/base, complete assessments, no blocking
+  findings, and a final unchanged metadata read. Stale output, refusal, malformed
+  output, missing provider access, and context failures produce failing checks.
+  Earlier same-head success is replaced when input collection fails. Only the
+  latest check with matching task/source/policy fingerprint is cached, so
+  reverting to rejected PR text cannot leave a newer approval active.
+- PR events, explicit dispatch, and scheduled reconciliation are implemented.
+  Concurrency is per PR. Cached failures do not automatically spend more tokens;
+  an owner-authorized dispatch can retry, with at most three attempts per exact
+  context recorded in check-run history. Jobs have 15-minute limits, and the
+  model request has a 10-minute timeout and bounded output.
+- Verification: `.venv/bin/python scripts/check.py` passes TypeScript and Python
+  suites, all 24 script checks (including nine reviewer acceptance checks), static
+  checks, and strict validation of all three active OpenSpec changes. Actionlint
+  1.7.7 passes CI, worker, and reviewer workflows. App-role checks cover both
+  installation-token permission maps and use only synthetic private-key data.
+- Reviewer checks cover exact-head approval, new commits during review, blocking
+  findings, malformed/refused/tool-call output, oversized/incomplete context,
+  prior-approval invalidation, wrong-App spoofing, retry exhaustion, source-as-data
+  handling without subprocess execution, and absence of credential values from
+  model payloads. A test-fixture omission of the fake App's repository name was
+  corrected; there is no unresolved local failure.
+- Task 6.1 remains unchecked until a controlled hosted PR verifies reviewer App
+  attribution, new-head invalidation, and failure blocking under the actual
+  required-check ruleset. Task 6.3's no-bypass/live activation evidence is also
+  pending. Bootstrap remains 15/27 complete; do not archive it or call remote
+  review active based on these local checks.
+- Setup: `docs/independent-review.md` and the updated main setup guide. Configure
+  `REVIEWER_APP_PRIVATE_KEY`, `REVIEWER_APP_ID`, and the existing `OPENAI_API_KEY`,
+  then explicitly set `INDEPENDENT_REVIEW_ENABLED=true` for a controlled run.
+  Manual merging remains the initial rollout. No live App/model request, push,
+  remote configuration change, merge, or publication was performed this session.
 
 ## Rootprint rename and versioned labels
 
