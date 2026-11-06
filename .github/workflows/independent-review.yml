@@ -81,7 +81,7 @@ jobs:
           RETRY_REVIEW: ${{ github.event_name == 'workflow_dispatch' && inputs.retry }}
         run: |
           if [ "$RETRY_REVIEW" = true ]; then
-            python scripts/independent_review.py run --pr "$PR_NUMBER" --retry
+            python scripts/hosted_independent_review.py run --pr "$PR_NUMBER" --retry
           else
-            python scripts/independent_review.py run --pr "$PR_NUMBER"
+            python scripts/hosted_independent_review.py run --pr "$PR_NUMBER"
           fi
