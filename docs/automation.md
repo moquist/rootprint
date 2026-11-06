@@ -21,6 +21,9 @@ after pushing the worker; that does not activate autonomous maintenance.
 
 AI can implement and verify changes during interactive sessions. It is not
 listening for reports or repairing failures while no agent session is running.
+During interactive local work, the owner performs every push. Agents prepare
+verified local commits and owner-run commands; they must not push or request
+push credentials. GitHub-settings authorization does not authorize pushing.
 `docs/local-work.md` substitutes for an issue ledger until GitHub is available.
 The owner has now pushed and reports successful hosted CI. Recorded local test
 results remain separate from that owner report. GitHub event delivery, hosted
@@ -31,8 +34,8 @@ These are activation gaps, not permission to weaken the specified gates.
 
 ## Activation sequence
 
-1. Owner selects GitHub repository visibility and authorizes its first push.
-   The agent does not create a public repository, push, or publish implicitly.
+1. Owner selects GitHub repository visibility and performs all local-work pushes.
+   The agent does not create a public repository or publish implicitly.
 2. Confirm the `CI` workflow runs on all configured hosts. The stable aggregate
    required check is **`ci`**; it fails if any matrix job fails or is skipped.
 3. Implement and install a dedicated GitHub App for issue comments, branch/PR

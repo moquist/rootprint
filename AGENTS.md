@@ -38,10 +38,13 @@ verification, and local commits are agent responsibilities; involve people for
 requirements, material ambiguity, and account-owner decisions.
 
 Use `docs/local-work.md` as the durable ledger while GitHub is unavailable.
+Read its latest session handoff before resuming work in a new session.
 Record failures, decisions, evidence, and remaining activation requirements.
-Never describe inactive automation as running. No pushing or publishing without
-account-owner authorization. Rust follows TypeScript/Python conformance in a
-separate OpenSpec change.
+Never describe inactive automation as running. During interactive local work,
+agents must not push: the owner performs all pushes. Authorization to manage
+GitHub settings does not authorize pushing. Do not publish without account-owner
+authorization. Rust follows TypeScript/Python conformance in a separate OpenSpec
+change.
 
 ## Trust boundaries
 

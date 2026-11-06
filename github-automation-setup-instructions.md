@@ -27,8 +27,10 @@ the same in stages 2 and 3.
 
 ## 1. Create the repository and push
 
-Create a GitHub repository with your preferred visibility. From the local
-repository, replace `OWNER` and `REPOSITORY` and run:
+Create a GitHub repository with your preferred visibility.
+The owner runs every push during interactive local work; agents prepare verified
+local commits and commands, without pushing or requesting push credentials.
+From the local repository, replace `OWNER` and `REPOSITORY` and run:
 
 ```sh
 git remote add origin git@github.com:OWNER/REPOSITORY.git
@@ -209,6 +211,8 @@ PR's head SHA, open
 **Settings → Rules → Rulesets** and protect `main` with:
 
 - Require a pull request.
+- Allow only **Rebase and merge** and require linear history. In repository
+  settings, enable rebase merging and disable squash merging and merge commits.
 - Require the **`ci`** status check.
 - Require **`independent-review`**, restricted to the reviewer App as its source.
 - Block force pushes and branch deletion.
@@ -244,13 +248,23 @@ push alone. You can remain at this stage for as long as you like, selecting
 issues with `ready` and merging the resulting PRs yourself. This verifies the
 manual-merge stage, not automatic merging or full autonomous maintenance.
 
+For the prepared logo PR, deploy PNG reviewer support onto the trusted default
+branch first, then refresh `docs/readme-logo` against it. The reviewer supplies
+actual inline PNG images labeled with path/blob SHA/baseline-or-head role;
+limits are 1 MiB per version, four versions/2 MiB total, 4096 pixels per side,
+and 8,000,000 pixels. It does not raster-decode images on the privileged host.
+Follow the [controlled logo acceptance sequence](docs/independent-review.md#controlled-logo-pr)
+and record visual-review, exact-head App, fresh-check, and merge-blocking evidence.
+The owner performs all pushes; keep hosted acceptance open until verified.
+
 ## 9. Enable automatic merging later
 
 When you are ready:
 
 1. Enable **Allow auto-merge** in repository settings.
 2. Implement and enable the worker's auto-merge request for one controlled PR,
-   using squash merging. GitHub must enforce the same required checks.
+   using rebase merging. GitHub must enforce the same required checks and
+   rebase-only, linear-history policy.
 3. Verify that failed, missing, or stale CI/review checks prevent merging, and
    that new commits require fresh checks and independent review.
 4. Verify that the controlled PR merges automatically only after all required
