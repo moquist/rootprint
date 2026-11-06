@@ -14,7 +14,7 @@
 ## 3. Integrated and hosted acceptance
 
 - [x] 3.1 Run `python3 scripts/check.py` using the configured development environment, strict OpenSpec validation, and `git diff --check`; record results and verified local commits without pushing or claiming hosted activation.
-- [ ] 3.2 After the owner pushes and deploys PNG support, refresh the logo branch against the updated base and verify the controlled PR's visual review, exact-head reviewer App attribution, fresh CI/review after another commit, and blocking behavior under the no-bypass ruleset; record actual PR/check/run URLs and leave this task open while hosted evidence is unavailable.
+- [x] 3.2 After the owner pushes and deploys PNG support, refresh the logo branch against the updated base and verify the controlled PR's visual review, exact-head reviewer App attribution, fresh CI/review after another commit, and blocking behavior under the no-bypass ruleset; record actual PR/check/run URLs and leave this task open while hosted evidence is unavailable.
 
 ## Workflow follow-up
 
@@ -30,10 +30,12 @@
 - Further handoff evidence lives here to avoid adding the large ledger's baseline to this PR. Task 3.2 remains open; no agent push or merge occurred.
 - Rebased verification passes: both ports, 29 script tests, Ruff, strict specs, and diff checks. Deployed-reviewer replay fits 600,000 bytes with a 2,048-byte discussion allowance; exact size is recorded in the verification commit.
 
-## Hosted logo acceptance — in progress
+## Hosted logo acceptance — verified 2026-11-06
 
 - PR: https://github.com/moquist/rootprint/pull/10. Initial head `6dba341` passed visual review from App `5631539`; the review explicitly inspected the PNG motif/wordmark: https://github.com/moquist/rootprint/actions/runs/42172497614. Initial CI passed: https://github.com/moquist/rootprint/actions/runs/42172498444. GitHub reported `CLEAN`/`MERGEABLE`.
 - Owner pushed alt-text commit `1c1c2e58fb3699c0598a7fc5b96e1915740039c6`. API inspection captured `BLOCKED` with new-head checks pending and no inherited reviewer approval.
 - Fresh CI succeeded from Actions App `15368`: https://github.com/moquist/rootprint/actions/runs/42172939856. Fresh review failed HTTP 429 from App `5631539`: https://github.com/moquist/rootprint/actions/runs/42172937250. GitHub remained `BLOCKED` after CI succeeded; old-head approval did not satisfy the new-head review gate.
 - Ruleset `26673301` remains active, bypass actors empty, current user bypass `never`, strict required checks bound to the two App IDs, and rebase-only/linear-history enforcement enabled.
-- Task 3.2 stays open until fresh review succeeds on this head. Provider quota/rate-limit diagnosis and an owner-authorized retry remain pending. Evidence is on local `docs/png-review-acceptance`; the pushed logo branch/head is unchanged. No agent push or merge occurred.
+- Owner-authorized retry passed on exact head `1c1c2e58fb3699c0598a7fc5b96e1915740039c6` from App `5631539`: https://github.com/moquist/rootprint/actions/runs/42173443577. The reviewer again explicitly inspected the image and returned a nonblocking line-zero finding about background speckling/contrast. Original image bytes remain unchanged.
+- `gh pr checks 10 --required` confirms current-head CI and independent review pass. GitHub reports `UNSTABLE`/`MERGEABLE`; no agent merge was attempted. Task 3.2 is complete (7/7 total) with visual, freshness, and failed/missing-check blocking evidence above.
+- Completion evidence is on local `docs/png-review-acceptance`; the pushed logo branch/head is unchanged and ready for the owner's rebase-merge. No agent push or merge occurred. Keep bootstrap unarchived; do not archive this additive delta ahead of its baseline.
