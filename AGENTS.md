@@ -23,6 +23,10 @@ routine human PR approval must not be required.
 6. Obtain independent automated review before remote merging. Archive/sync
    completed OpenSpec changes through the archive workflow, then verify specs.
 
+Automated review excludes image-file contents. Do not add image validation,
+visual inspection, or visual acceptance gates for assets such as README logos.
+Review surrounding text and changed path metadata normally.
+
 ## Permanent README requirements
 
 The primary `README.md` must contain simple usage examples for every

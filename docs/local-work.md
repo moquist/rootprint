@@ -2,6 +2,23 @@
 
 ## Current handoff — 2026-11-06
 
+- Owner approved `exclude-images-from-review`: remove PNG parsing, visual input,
+  image budgets and visual acceptance gates. Common image assets (including SVG)
+  are excluded without fetching bytes; paths/modes remain visible and README text
+  is reviewed. The README logo stays. This supersedes PNG requirements and the
+  compact-JSON delta's image-label clauses. Historical PNG evidence below is not
+  an ongoing requirement. Local implementation is verified; no deployment of
+  image exclusion is claimed. Owner pushes through ordinary current-head CI and
+  independent review; no agent push or remote setting change was made.
+- Image-exclusion verification: 14 focused reviewer checks passed;
+  `PATH="$PWD/.venv/bin:$PATH" python3 scripts/check.py` passed 5 TypeScript tests,
+  5 Python tests, 30 script checks (including integration), Ruff, and strict
+  validation of all six active changes. Initial strict validation rejected a long
+  requirement and prose above the first spec section; both were corrected before
+  the passing integrated run. `git diff --check` passed. Bootstrap synchronization
+  remains prerequisite to archiving dependent changes; hosted acceptance is not
+  inferred from local checks.
+
 - Owner authorized compacting superseded handoffs to unblock review-context
   deployment. Full original ledger: `5444d19:docs/local-work.md`; older PNG
   implementation evidence: `6ee87b7:docs/local-work.md`. Both are preserved Git

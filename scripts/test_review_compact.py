@@ -1,4 +1,4 @@
-"""Exact compact task/label accounting; source and PNG transport remain inline."""
+"""Exact compact text transport and byte accounting."""
 
 import json
 import os
@@ -6,14 +6,14 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 import independent_review as reviewer
-from test_independent_review import Repository, answer, png, source_text
+from test_independent_review import Repository, answer, source_text
 
 
 class CompactTransport(unittest.TestCase):
-    def test_exact_utf8_transport_and_budget_include_every_image_label(self):
+    def test_exact_utf8_transport_and_budget(self):
         repo = Repository()
         text = 'café ☃\r\n  "quoted" \\ end\n'
-        repo.head_files.update({"exact.txt": text, "café.png": png()})
+        repo.head_files.update({"exact.txt": text, "café.png": b"not fetched"})
         task = reviewer.context(repo, reviewer.metadata(repo, repo, 9))
         self.assertEqual(source_text(task, "head_files", "exact.txt"), text)
         response = {"status": "completed", "output": [
@@ -32,7 +32,8 @@ class CompactTransport(unittest.TestCase):
         self.assertEqual(json.loads(content[0]["text"])["pr"], task["pr"])
         self.assertIn("café", content[0]["text"])
         size = sum(len(c["text"].encode()) for c in content if c["type"] == "input_text")
-        self.assertGreater(size, len(content[0]["text"].encode()))
+        self.assertEqual(len(content), 1)
+        self.assertEqual(size, len(content[0]["text"].encode()))
         with patch.object(reviewer, "MAX_CONTEXT", size):
             reviewer.context(repo, reviewer.metadata(repo, repo, 9))
         with patch.object(reviewer, "MAX_CONTEXT", size - 1), \

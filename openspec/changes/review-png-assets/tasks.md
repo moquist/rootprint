@@ -1,5 +1,8 @@
 # Tasks
 
+> Historical completed work and evidence. Superseded by
+> `exclude-images-from-review`; these checks are not ongoing requirements.
+
 ## 1. PNG collection and validation
 
 - [x] 1.1 Record the owner's no-agent-push instruction for interactive local work in `AGENTS.md` and operations documentation; verify local work/activation instructions assign pushes to the owner and do not request agent push access.
