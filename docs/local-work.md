@@ -1,5 +1,36 @@
 # Local work ledger
 
+## Latest session handoff — 2026-11-07 (bounded PR repair planning)
+
+- Owner approved specifying automatic repairs to existing worker PRs while keeping
+  final PR approval as the owner's manual rebase merge. Created
+  `openspec/changes/repair-worker-pull-requests/`: proposal, additive
+  `pull-request-repair` delta, design and 12 unchecked implementation/acceptance
+  tasks. This session is planning only; no worker behavior or deployment changed.
+- Initial `ready` covers bounded repairs of the authorized issue revision on the
+  same PR/branch. Initial implementation and repairs share three attempts; worker
+  commits/events do not reset them. Legacy PRs require explicit repair authorization.
+  The plan requires current-head expected-App evidence, typed reviewer outcomes,
+  exact-head credential-free execution, separate phases and regression evidence,
+  non-force append-only publication, durable lost-response recovery and fresh
+  CI/review before reporting ready for owner merge. Infrastructure failures,
+  ambiguity, scope changes and exhaustion stop or pause work with concrete status.
+- Inspected worker early returns, durable revision/retry/publication flows, sandbox
+  seeding/export, agent phases/policy, reviewer check output, workflow triggers and
+  existing tests. Main specs remain empty; bootstrap's maintenance delta is the
+  baseline. Its later automatic-merge requirement is retained, not activated or
+  completed by this manual-merge repair capability. Bootstrap remains 17/27.
+- Next: a separately requested apply phase for `repair-worker-pull-requests`.
+  Keep hosted acceptance tasks open until owner deployment and real controlled
+  run evidence, including failure/repair/fresh checks, a passing PR left open for
+  owner merge, exhausted attempts and stale-head/recovery scenarios. No push,
+  remote settings change, merge or publication occurred. Preserve archive/baseline
+  prerequisites and existing App-bound no-bypass gates.
+- Planning verification passed: focused strict validation, then credential-free
+  `python3 scripts/check.py` (both five-test port suites, 32 script checks, Ruff
+  and all nine strict changes), plus `git diff --check`. OpenSpec reports all
+  four planning artifacts ready; 0/12 implementation/acceptance tasks are done.
+
 ## Latest session handoff — 2026-11-07 (activation report correction)
 
 - Fixed the obsolete activation report under bootstrap's existing accurate setup
