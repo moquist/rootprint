@@ -1,5 +1,35 @@
 # Local work ledger
 
+## Latest session handoff — 2026-11-07 (clarification-context fix planned)
+
+- PR #22 merged as `01295c9` after final head `82d439f` passed CI and independent
+  review (runs `42414218342` and `42414216291`). This supersedes the earlier open-PR
+  handoff. Created planning branch `docs/preserve-clarification-context` from that
+  fetched main; repair hosted-acceptance tasks remain open.
+- Issue https://github.com/moquist/rootprint/issues/23 exposed a clarification loop:
+  the worker drops bot comments from model context, so the owner's short agreement
+  loses its antecedent question. Generic triage/attempt status also overwrites the
+  durable message before context construction. The owner is handling #23's immediate
+  workaround; this session did not mutate the issue, labels or workflows.
+- Reproduced locally without credentials/model/API access:
+  `env -i HOME=/tmp/opencode PATH="$PWD/.venv/bin:$PATH" PYTHONPATH="$PWD/scripts" python3 /tmp/opencode/reproduce_clarification_context.py`.
+  It fails the assertion `Owner reply survives, but its antecedent worker question
+  is lost` after saving a needs-information question, adding a short human answer,
+  creating a fresh worker and saving generic triage status.
+- Created `openspec/changes/preserve-worker-clarification-context/`: proposal,
+  design and five unchecked implementation/acceptance tasks. `skip_specs: true`
+  intentionally avoids inventing requirements for a bug in bootstrap's existing
+  automated issue lifecycle. The plan retains bounded clarification history in the
+  existing App state, migrates recoverable legacy questions before overwrite and
+  supplies complete bounded question/answer evidence to initial and repair phases.
+  Ready authorization, issue-revision/attempt accounting and trust boundaries remain
+  enforced; no separate chat store or new permissions are needed.
+- Focused and all-change strict validation passed (10 changes); whitespace passed.
+  All planning artifacts are ready, specs are explicitly skipped and 0/5 apply tasks
+  are complete. No project runtime/test code changed. Next is a separate apply
+  request; owner publication still requires fresh CI, independent review and manual
+  rebase merge, followed by a new controlled short-answer acceptance run.
+
 ## Latest session handoff — 2026-11-07 (PR #22 independent-review fixes)
 
 - PR https://github.com/moquist/rootprint/pull/22 is open at published head
