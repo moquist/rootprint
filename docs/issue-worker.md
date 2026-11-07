@@ -113,7 +113,10 @@ step failures are source-repair candidates; the sandbox must reproduce the probl
 Setup/dependency/runner/provider failures, missing or oversized diagnostics and
 unclear requirements pause for intervention. Review infrastructure errors and
 legacy prose-only failures cannot masquerade as actionable blocking findings.
-The combined task/diagnostics ceiling is 90,000 serialized characters.
+The combined task/diagnostics ceiling is 90,000 serialized characters, checked
+again at every actual model phase after adding prior reports and verification text.
+All matrix jobs must be completed with success or source failure before repair;
+mixed source failures and operational/unfinished/unsupported outcomes pause work.
 
 Immutable PR Git blobs are overlaid inside the credential-free sandbox and checked
 against the complete diagnosed tree. The overlay retains the 100-file, 1-MiB-file,
