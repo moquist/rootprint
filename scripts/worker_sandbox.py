@@ -2,6 +2,7 @@
 
 import argparse
 import base64
+import hashlib
 import json
 import os
 from pathlib import Path, PurePosixPath
@@ -21,7 +22,7 @@ REPORT_SCHEMA = {
     "type": "object", "additionalProperties": False,
     "properties": {
         "status": {"type": "string", "enum": ["ready", "needs-information", "blocked", "complete"]},
-        "kind": {"type": "string", "enum": ["bug", "feature"]},
+        "kind": {"type": "string", "enum": ["bug", "feature", "maintenance"]},
         "summary": {"type": "string", "minLength": 1, "maxLength": 12000},
         "contract": {"type": "string", "maxLength": 500},
         "regression": {"type": "string", "maxLength": 4000},
@@ -99,7 +100,7 @@ def validate_report(report):
         if not isinstance(report[field], str) or len(report[field]) > REPORT_SCHEMA["properties"][field].get("maxLength", 100):
             raise ValueError("Invalid report field")
     if (report["status"] not in REPORT_SCHEMA["properties"]["status"]["enum"]
-            or report["kind"] not in ("bug", "feature") or not report["summary"].strip()
+            or report["kind"] not in ("bug", "feature", "maintenance") or not report["summary"].strip()
             or not isinstance(report["duplicates"], list) or len(report["duplicates"]) > 10
             or any(type(n) is not int or n < 1 for n in report["duplicates"])):
         raise ValueError("Invalid phase report")
@@ -172,6 +173,75 @@ class Sandbox:
         if code or truncated:
             raise RuntimeError("Could not safely export patch")
         return validate_changes(json.loads(output))
+
+    def import_head(self, snapshot):
+        # Only the fixed trusted bridge receives data; no host extraction or PR command.
+        payload = json.dumps(snapshot).encode()
+        if len(payload) > MAX_PATCH * 2:
+            raise ValueError("Repair snapshot exceeds import limit")
+        result = subprocess.run([self.runtime, "exec", "--interactive", "--workdir", "/work", self.name,
+                                 "/usr/bin/python3", "-I", "/bridge/worker_sandbox.py", "import"],
+                                input=payload, capture_output=True, env=clean_env(), timeout=120)
+        if result.returncode or not re_sha(result.stdout.decode().strip()):
+            raise RuntimeError("Could not import and verify exact repair head in sandbox")
+        self.base = result.stdout.decode().strip()
+
+
+def re_sha(value):
+    return isinstance(value, str) and len(value) == 40 and all(c in "0123456789abcdef" for c in value)
+
+
+def import_head(snapshot):
+    """Runs only INSIDE the container, with the trusted bridge and no credentials."""
+    root = Path("/work")
+    if not isinstance(snapshot, dict) or set(snapshot) != {"changes", "tree"}:
+        raise ValueError("Invalid repair snapshot")
+    expected = snapshot["tree"]
+    if not isinstance(expected, dict) or not 1 <= len(expected) <= 2000:
+        raise ValueError("Invalid repair snapshot tree")
+    for path, entry in expected.items():
+        safe_path(path)
+        if not isinstance(entry, list) or len(entry) != 2 or entry[0] not in ("100644", "100755") or not re_sha(entry[1]):
+            raise ValueError("Invalid repair snapshot entry")
+    changes = snapshot["changes"]
+    if changes:
+        validate_changes(changes)
+    for entry in sorted(changes, key=lambda e: (e["content"] is not None, -e["path"].count("/"))):
+        path = root / safe_path(entry["path"])
+        if not path.resolve().is_relative_to(root) or any(p.is_symlink() for p in (path, *path.parents)):
+            raise ValueError("Symlink import is forbidden")
+        if entry["content"] is None:
+            path.unlink(missing_ok=True)
+        else:
+            if path.is_dir():
+                # Only empty source directories can be replaced; never discard cached dependencies.
+                path.rmdir()
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(base64.b64decode(entry["content"], validate=True))
+            path.chmod(0o755 if entry["mode"] == "100755" else 0o644)
+        if entry["content"] is None:
+            parent = path.parent
+            while parent != root:
+                try:
+                    parent.rmdir()
+                except OSError:
+                    break
+                parent = parent.parent
+    subprocess.run(["git", "add", "-u"], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "add", "-f", "--", *expected], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "-c", "user.name=Rootprint", "-c", "user.email=worker@invalid", "-c", "core.hooksPath=/dev/null",
+                    "commit", "--allow-empty", "-qm", "PR repair baseline"], cwd=root, check=True, capture_output=True)
+    actual = {}
+    for line in subprocess.check_output(["git", "ls-tree", "-rz", "HEAD"], cwd=root).split(b"\0"):
+        if line:
+            metadata, path = line.split(b"\t", 1)
+            mode, kind, oid = metadata.decode().split()
+            if kind != "blob":
+                raise ValueError("Unsupported imported Git object")
+            actual[path.decode()] = [mode, oid]
+    if actual != expected:
+        raise ValueError("Imported source does not match diagnosed head")
+    print(subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip())
 
 
 def export(base):
@@ -280,9 +350,44 @@ PY"""
     print("Sandbox isolation and hostile-artifact probes passed")
 
 
+def repair_smoke(runtime):
+    with Sandbox(runtime) as sandbox:
+        code, output, truncated = sandbox.run("git ls-tree -rz HEAD")
+        if code or truncated:
+            raise RuntimeError("Could not inspect sandbox repair baseline")
+        expected = {}
+        for line in output.split("\0"):
+            if line:
+                meta, path = line.split("\t", 1)
+                mode, _, oid = meta.split()
+                expected[path] = [mode, oid]
+        changes = [{"path": "README.md", "mode": "100644", "content": None}]
+        del expected["README.md"]
+        for path, mode, content in (("AGENTS.md", "100644", b"test PR source\n"),
+                                    ("repair-added.sh", "100755", b"#!/bin/sh\nexit 0\n")):
+            changes.append({"path": path, "mode": mode, "content": base64.b64encode(content).decode()})
+            expected[path] = [mode, hashlib.sha1(b"blob " + str(len(content)).encode() + b"\0" + content).hexdigest()]
+        snapshot = {"changes": changes, "tree": expected}
+        sandbox.import_head(snapshot)
+        code, output, _ = sandbox.run("git status --porcelain --untracked-files=normal")
+        if code or output.strip():
+            raise RuntimeError("PR repair source was not established as a clean baseline")
+        sandbox.run("python3 -c \"from pathlib import Path; Path('repair-added.sh').write_text('repaired')\"")
+        assert sandbox.changes() == [{"path": "repair-added.sh", "mode": "100755",
+                                      "content": base64.b64encode(b"repaired").decode()}]
+        expected["AGENTS.md"][1] = "0" * 40
+        try:
+            sandbox.import_head(snapshot)
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError("Mismatched repair snapshot accepted")
+    print("Exact repair-head import, deletions, modes, export baseline and mismatch rejection passed")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=["build", "smoke", "mcp", "export"])
+    parser.add_argument("mode", choices=["build", "smoke", "mcp", "export", "import"])
     parser.add_argument("--runtime", choices=["docker", "podman"], default="docker")
     parser.add_argument("--container")
     parser.add_argument("--result")
@@ -294,5 +399,10 @@ if __name__ == "__main__":
         smoke(args.runtime)
     elif args.mode == "export":
         export(args.base)
+    elif args.mode == "import":
+        payload = sys.stdin.buffer.read(MAX_PATCH * 2 + 1)
+        if len(payload) > MAX_PATCH * 2:
+            raise ValueError("Repair snapshot exceeds import limit")
+        import_head(json.loads(payload))
     else:
         serve(args.runtime, args.container, args.result)

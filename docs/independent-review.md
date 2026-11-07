@@ -111,6 +111,19 @@ for a different model verdict.
 
 ## Trust boundary and limits
 
+### Repair diagnostics contract
+
+Check `output.text` contains bounded JSON with schema `rootprint-review-outcome-v1`.
+Kinds are `approval`, `rejection`, and `infrastructure`. Validated model outcomes
+include exact head/base, a material-task digest and the validated structured result;
+infrastructure failures never include actionable findings. Output over 60,000 UTF-8
+bytes fails closed. Human-readable summaries and the required App check are retained.
+Only the implementation App's own durable issue-state record is excluded from the
+repair-task digest, so recording a repair attempt does not invalidate its own input;
+normal independent-review cache/freshness checks still cover the full metadata.
+Consumers must verify App identity, head/base, task freshness and the outcome schema.
+Legacy/malformed output requires fresh review, not guessed prose classification.
+
 `pull_request_target` supplies the event, but both jobs explicitly check out only
 the trusted **default branch** with persisted credentials disabled. No PR branch,
 PR workflow, plugin, config, build, test, artifact, or downloaded source is ever

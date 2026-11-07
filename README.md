@@ -175,6 +175,10 @@ evidence and remaining requirements; it does not probe live service health.
 Automatic merging and releases remain separate integrations. See
 [automation activation](docs/automation.md).
 
+Bounded repairs to an existing worker PR are implemented locally, pending hosted
+deployment/acceptance. They share the issue's three-attempt budget, require fresh
+CI/review after each commit, and stop at your manual rebase-merge decision.
+
 ## License
 
 Rootprint is licensed under the [Eclipse Public License 2.0](LICENSE)

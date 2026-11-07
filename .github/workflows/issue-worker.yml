@@ -20,6 +20,9 @@ on:
 permissions:
   contents: read
   issues: read
+  actions: read
+  checks: read
+  pull-requests: read
 
 jobs:
   discover:
@@ -86,5 +89,7 @@ jobs:
           IMPLEMENTATION_APP_ID: ${{ vars.IMPLEMENTATION_APP_ID }}
           IMPLEMENTATION_APP_PRIVATE_KEY: ${{ secrets.IMPLEMENTATION_APP_PRIVATE_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+          REVIEWER_APP_ID: ${{ vars.REVIEWER_APP_ID }}
           ISSUE_NUMBER: ${{ matrix.issue }}
         run: python scripts/issue_worker.py run --issue "$ISSUE_NUMBER"

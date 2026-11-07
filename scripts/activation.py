@@ -23,6 +23,7 @@ def status():
         "Current GitHub settings, App installations, provider access and runner isolation are not live-probed by this report",
         "Hosted adversarial input, repeated events, exhausted attempts/recovery and failure deduplication acceptance remains incomplete",
         "Controlled bug-to-failing-regression-to-fix acceptance remains pending; issue #12 exercised a documentation change",
+        "Existing-PR repair is implemented locally; controlled hosted repair/retry/recovery acceptance remains pending",
         "Automatic rebase merging is not implemented or verified; last inspected repository setting had auto-merge disabled",
         "Automatic version PRs and verified publishing integration are not implemented or verified",
         "Registry ownership and publishing identity are not verified",

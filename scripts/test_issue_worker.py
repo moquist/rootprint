@@ -53,7 +53,11 @@ class FakeGitHub:
                 return copy.deepcopy(self.prs)
             if path == "/pulls/9":
                 return {"number": 9, "html_url": "https://github.com/owner/repo/pull/9", "merged": self.merged,
-                        "state": "closed" if self.merged else "open", "head": {"sha": "a" * 40}}
+                        "state": "closed" if self.merged else "open", "draft": False,
+                        "user": {"login": "worker[bot]"},
+                        "head": {"sha": "a" * 40, "ref": self.prs[0]["head"].get("ref", "") if self.prs else "",
+                                 "repo": {"full_name": self.repo}},
+                        "base": {"sha": "b" * 40, "ref": "main", "repo": {"full_name": self.repo}}}
             if "/check-runs?" in path:
                 return {"check_runs": [{"name": "ci", "conclusion": "failure" if self.failed else "success"}]}
             if path.endswith("/status"):
@@ -83,7 +87,7 @@ class FakeGitHub:
                 return {}
             if path == "/pulls":
                 pr = {"number": 9, "html_url": "https://github.com/owner/repo/pull/9",
-                      "head": {"sha": "new-commit", "repo": {"full_name": self.repo}}, "base": {"ref": "main"}}
+                      "head": {"sha": "new-commit", "ref": data["head"], "repo": {"full_name": self.repo}}, "base": {"ref": "main"}}
                 self.prs.append(pr)
                 return pr
         if method == "PATCH" and path == "/issues/comments/100":
@@ -155,8 +159,8 @@ class Lifecycle(unittest.TestCase):
         self.assertFalse(any("/merge" in c[1] for c in client.calls))
         client.failed = True
         self.worker(client).execute()
-        self.assertEqual(client.state()["status"], "blocked")
-        self.assertIn("Failing current-head checks: ci", client.comments[0]["body"])
+        self.assertEqual(client.state()["status"], "in-progress")
+        self.assertIn("Waiting for fresh required CI", client.comments[0]["body"])
         self.assertEqual(len(client.comments), 1)
         client.merged = True
         self.worker(client).execute()

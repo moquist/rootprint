@@ -1,5 +1,50 @@
 # Local work ledger
 
+## Latest session handoff — 2026-11-07 (existing worker PR repairs implemented locally)
+
+- Owner merged the planning PR; implementation branch `feat/worker-pr-repair`
+  starts at fetched main `22054ac`. Applied `repair-worker-pull-requests` locally:
+  initial `ready` authorization and the same three-attempt budget now cover repairs
+  on the existing worker PR/branch. Legacy PRs require explicit authorization;
+  changed scope, drafts/closure/foreign identity and exhaustion pause or stop work.
+- Added bounded expected-App gate/diagnostic collection with the workflow's
+  read-only token (explicit contents/issues/PR/checks/Actions reads), and typed
+  reviewer output distinguishing validated findings from infrastructure failures.
+  CI input is failed verification-step metadata plus complete check annotations
+  for the matching run attempt. Setup/runner/dependency failures are operational
+  blockers. No arbitrary log URL/command or PR artifact executes on the host.
+- Exact immutable head source is imported only inside the offline sandbox and
+  verified against its complete tree, including deletions/modes. Ambient OpenCode
+  files remain inert source; host/model config stays fixed. Repairs reuse the
+  shared plan/implement/complete path, failing-before/passing-after bug regression
+  and final integrated/package verification. Non-code maintenance requires runnable
+  acceptance and cannot change executable/configuration source.
+- Publication creates a non-force child commit on the same branch after freshness
+  checks. Durable commit intent, candidate and publication state recover lost
+  commit/ref/state responses without duplicate PRs or model work. A runnable test
+  initially exposed pending publication being erased on a failed final state save;
+  reloading durable state before recording failure fixed the shared recovery path.
+  Intervening owner work is preserved. Fresh required checks precede a ready-for-
+  owner-merge status; no merge, auto-merge, self-approval or settings writes exist.
+- Verification passed: credential-free `python3 scripts/check.py` (both five-test
+  port suites, 45 script checks, Ruff and nine strict changes), focused 13 repair
+  checks, `python3 scripts/package_check.py`, Actionlint 1.7.7 on all three workflows,
+  and whitespace checks. Real rootless Podman image build and
+  `python3 scripts/worker_runtime_check.py --runtime podman` passed isolation,
+  hostile artifact rejection, exact-head import/deletion/executable-mode/export
+  baseline/mismatch checks, pinned OpenCode 1.19.4 config, real MCP startup and
+  offline integrated/package checks (Node 22/Python 3.11). Latest added pagination,
+  size and no-change scenarios also pass host checks. No live model or App write
+  was made. Full affected flows/diff were inspected; protocol, packages, vectors,
+  dependencies and README usage/setup/all-tests commands are unchanged.
+- Local implementation/verification tasks 1.1–5.1 are complete (10/12). Hosted
+  tasks 5.2–5.3 remain open: owner publishes through exact-head CI and independent
+  review, manually rebase-merges, then controlled real CI/reviewer-failure repairs,
+  new-head checks, retry/recovery/hostile/stale-head acceptance and manual merge
+  outcome must be evidenced. Bootstrap remains 17/27 and changes stay unarchived.
+  Agents do not push or enable auto-merge. Documentation and activation output
+  explicitly describe repair as local implementation pending hosted acceptance.
+
 ## Latest session handoff — 2026-11-07 (repair planning PR prepared)
 
 - Owner merged activation PR https://github.com/moquist/rootprint/pull/20;

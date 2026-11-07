@@ -20,6 +20,11 @@ exhausted attempts/recovery, failure deduplication and a failing bug regression.
 Automatic merging and release integrations still need implementation and
 verification; the last inspected repository settings had auto-merge disabled.
 
+Existing-PR repair is implemented locally and awaits hosted acceptance. Repairs
+use the original issue authorization and shared three-attempt budget, publish only
+non-force child commits, and wait for fresh CI/review and owner manual merge. The
+worker guide describes diagnostic limits, legacy authorization and recovery.
+
 ## What local operation gives up
 
 AI can implement and verify changes during interactive sessions. A local session
