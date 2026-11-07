@@ -3,11 +3,12 @@
 import argparse
 
 from worker_agent import preflight
-from worker_sandbox import Sandbox, smoke
+from worker_sandbox import Sandbox, repair_smoke, smoke
 
 
 def main(runtime):
     smoke(runtime)
+    repair_smoke(runtime)
     with Sandbox(runtime) as sandbox:
         preflight(sandbox)
         code, output, _ = sandbox.run("python3 scripts/check.py && python3 scripts/package_check.py", timeout=300)

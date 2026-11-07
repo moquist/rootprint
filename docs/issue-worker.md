@@ -20,6 +20,7 @@ Under **Settings → Secrets and variables → Actions**, configure:
 | Secret | `IMPLEMENTATION_APP_PRIVATE_KEY` | Complete implementation App PEM private key |
 | Secret | `OPENAI_API_KEY` | OpenAI API key with access to GPT-6.1 Sol |
 | Variable | `IMPLEMENTATION_APP_ID` | Implementation App's App ID, not Client ID |
+| Variable | `REVIEWER_APP_ID` | Separate reviewer App ID; required for repair evidence attribution |
 | Variable | `ISSUE_WORKER_ENABLED` | Leave unset/`false` until ready for a controlled run; set `true` to run the worker |
 
 Install the implementation App on this repository only, with metadata read and
@@ -28,7 +29,10 @@ administration, publishing, or reviewer credentials. The coordinator creates a
 repository-scoped installation token and revokes it at the end of the run. The
 reviewer App's key is not referenced anywhere in this worker workflow.
 
-Keep the default Actions token read-only. The worker uses OpenCode **1.19.4** and
+Keep the default Actions token read-only. The workflow's ephemeral token has explicit
+contents/issues/PR/checks/Actions read permissions for repair evidence. It receives
+no reviewer private key or new App write scope; do not substitute a repository-write
+token. The worker uses OpenCode **1.19.4** and
 model **`openai/gpt-6.1-sol`**. Catalog recognition is checked without a real key;
 actual OpenAI API availability, entitlement, billing, and rate limits must be
 verified in the controlled hosted run. Configure provider spending controls in
@@ -70,6 +74,13 @@ Lifecycle labels are `triage`, `needs-information`, `ready`, `in-progress`,
 `blocked`, and `done`; other labels are preserved.
 
 Each revision allows at most three implementation attempts. Revision identity
+and its initial `ready` authorization cover both implementation and bounded repairs
+on its existing worker PR; commits/check reruns do not reset the budget. New issue
+information requires renewed authorization. Legacy PRs lacking a recorded repair
+authorization need `ready` or an eligible `/rootprint retry`. Repair reservations
+and run links are written before model execution; interrupted attempts count, and
+completed/no-change attempts are not repeated for identical failure evidence.
+Implementation and repairs share that single budget. Revision identity
 includes the issue title/body and non-bot information comments. Reopening or
 relabeling an unchanged issue does not reset its exhausted budget, nor does an
 unauthorized retry command. A user with repository write/maintain/admin permission
@@ -82,9 +93,41 @@ An interrupted implementation consumes its reserved attempt; reconciliation can
 resume with the next attempt. A lost branch/PR-create response is reconciled
 from the stored commit and branch without rerunning the model or overwriting an
 existing branch. A PR awaiting review/merge remains `in-progress`; failing checks
-or a PR closed without merging produce `blocked`. An existing PR is monitored,
-not silently replaced by a second implementation PR. Further repairs to an open
-PR are not currently driven by this issue worker.
+or a PR closed without merging can produce `blocked`. After deployment an existing
+PR can be repaired on the same branch within its shared attempt budget; it is never
+silently replaced by another PR.
+
+### Existing-PR repairs
+
+The locally implemented repair path awaits controlled hosted acceptance. It reads
+latest exact-head `ci` from GitHub Actions App `15368` and `independent-review`
+from `REVIEWER_APP_ID`. Missing/pending/stale/spoofed gates do not authorize work.
+Once both finish, an actionable failure can trigger separate repair triage, plan,
+implementation and completion phases. Code bugs require a real failing-before/
+passing-after regression; non-code maintenance requires a runnable acceptance check.
+
+CI diagnostics are complete failed verification-step records and check annotations
+for the matching CI run attempt, not privileged log execution or downloaded PR
+artifacts. Only `python scripts/check.py` and `python scripts/package_check.py`
+step failures are source-repair candidates; the sandbox must reproduce the problem.
+Setup/dependency/runner/provider failures, missing or oversized diagnostics and
+unclear requirements pause for intervention. Review infrastructure errors and
+legacy prose-only failures cannot masquerade as actionable blocking findings.
+The combined task/diagnostics ceiling is 90,000 serialized characters.
+
+Immutable PR Git blobs are overlaid inside the credential-free sandbox and checked
+against the complete diagnosed tree. The overlay retains the 100-file, 1-MiB-file,
+4-MiB-decoded limits; incomplete/unsupported trees or unavailable offline dependencies
+block. `.opencode` source is inert sandbox data, never host/model configuration.
+The trusted image, bridge and policy still come from default-branch orchestration.
+
+Verified repairs append a child commit through non-force branch updates. Owner
+head/base/issue/discussion/check changes invalidate stale work. Commit-create intent
+and pending branch publication survive lost responses; reconciliation recognizes
+an already-published candidate, including in later branch history, without another
+model attempt. Divergent owner work blocks publication rather than being overwritten.
+Once fresh CI/review pass, state says ready for owner manual rebase merge; no merge,
+auto-merge, self-approval or repository-setting write is requested.
 
 Jobs have a 30-minute limit; model/verification work shares a 22-minute budget.
 Sandbox tool commands have a 90-second limit and coordinator verification

@@ -259,11 +259,23 @@ def existing_checks(client, head, bot):
     raise ValueError("Review check history exceeds pagination limit")
 
 
-def complete(client, check_id, conclusion, summary):
+def repair_task(data):
+    # Updating the implementation ledger must not turn its own repair input stale.
+    value = json.loads(json.dumps(data))
+    for issue in value["issues"]:
+        issue["comments"] = [c for c in issue["comments"] if not (
+            c["author"] == value["author"] and c["body"].startswith("<!-- rootprint-worker-state\n"))]
+    return digest(value)
+
+
+def complete(client, check_id, conclusion, summary, outcome=None):
+    text = compact(outcome or {"schema": "rootprint-review-outcome-v1", "kind": "infrastructure"})
+    if len(text.encode()) > 60000:
+        raise ValueError("Structured review diagnostics exceed check output limit")
     client.api("PATCH", f"/check-runs/{check_id}", {
         "status": "completed", "conclusion": conclusion,
         "output": {"title": "Independent review " + ("passed" if conclusion == "success" else "blocked"),
-                   "summary": summary},
+                   "summary": summary, "text": text},
     })
 
 
@@ -311,7 +323,11 @@ def review(client, reader, bot, number, retry=False):
         findings = "\n".join(f"- **{f['severity']}** `{f['path']}:{f['line']}`: {f['message']}" for f in result["findings"])
         summary = (f"Reviewed head `{data['head']}` against base `{data['base']}`.\n\n{result['summary']}\n\n"
                    f"{assessments}\n\n{findings}\n\n[Trusted review run]({run_url}). CI remains a separate required gate.")
-        complete(client, check["id"], "success" if result["decision"] == "approve" else "failure", summary)
+        complete(client, check["id"], "success" if result["decision"] == "approve" else "failure", summary,
+                 {"schema": "rootprint-review-outcome-v1",
+                  "kind": "approval" if result["decision"] == "approve" else "rejection",
+                  "head": data["head"], "base": data["base"], "task": repair_task(data),
+                  "result": result})
     except Exception as error:
         # Never publish request bodies, environment values, provider responses, or credential-bearing tracebacks.
         detail = str(error)[:500] if type(error) in (ValueError, RuntimeError, ApiError) else type(error).__name__

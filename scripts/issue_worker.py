@@ -2,6 +2,7 @@
 
 import argparse
 import base64
+from datetime import datetime, timezone
 import hashlib
 import json
 import os
@@ -17,6 +18,7 @@ from urllib.request import Request, urlopen
 
 from worker_agent import phase
 from worker_sandbox import ROOT, Sandbox, safe_path, validate_changes
+from worker_repair import checks as repair_checks, fingerprint as repair_fingerprint, overlay
 
 STATES = ("triage", "needs-information", "ready", "in-progress", "blocked", "done")
 MARKER = "<!-- rootprint-worker-state\n"
@@ -121,8 +123,10 @@ def load_state(comments, bot):
 
 
 class Worker:
-    def __init__(self, client, bot, number, runtime="docker"):
+    def __init__(self, client, bot, number, runtime="docker", reader=None, reviewer_app=None):
         self.client, self.bot, self.number, self.runtime = client, bot, number, runtime
+        self.reader = reader or client
+        self.reviewer_app = int(reviewer_app if reviewer_app is not None else os.environ.get("REVIEWER_APP_ID", "0"))
         self.path = f"/issues/{number}"
         self.issue = client.api("GET", self.path)
         self.comments = list(client.pages(self.path + "/comments"))
@@ -185,8 +189,45 @@ class Worker:
                 self.state.pop("triage_revision", None)
                 self.state.pop("triage_errors", None)
                 self.state["retry_comment"] = comment["id"]
+                if not self.state.get("repair", {}).get("pending"):
+                    self.state.pop("repair", None)
                 return True
         return False
+
+    def authorize_repair(self, pr):
+        """Never adopt a different PR/branch, even in response to an owner retry."""
+        if (self.issue["state"] != "open" or pr.get("draft") or pr["state"] != "open"
+                or pr.get("user", {}).get("login") != self.bot
+                or pr["head"].get("repo", {}).get("full_name") != self.client.repo
+                or pr["head"].get("ref") != self.state.get("branch")
+                or pr["base"].get("repo", {}).get("full_name") != self.client.repo
+                or pr["base"]["ref"] != self.state.get("default_branch")):
+            self.save("blocked", "Repair paused: issue/PR is closed, draft, foreign, or differs from the authorized worker branch.")
+            return False
+        retry = self.retry_request()
+        ready = "ready" in {label["name"] for label in self.issue["labels"]}
+        if self.state.get("repair_revision") != self.rev or retry:
+            if not (ready or retry):
+                self.save("blocked", "Repair needs authorization for this issue revision. Apply `ready` or an eligible `/rootprint retry`.")
+                return False
+            self.state["repair_revision"] = self.rev
+            self.save("in-progress", "Authorized bounded repairs on the existing worker PR; owner still merges manually.")
+        return True
+
+    def reserve_repair(self, key, pr):
+        previous = self.state.get("repair", {})
+        if previous.get("key") == key and previous.get("stage") in ("finished", "blocked", "needs-information"):
+            return False
+        attempts = self.state["attempts"].get(self.rev, 0)
+        if attempts >= 3:
+            self.save("blocked", "Three attempts exhausted for this issue revision. Supply new information and ready, or an eligible `/rootprint retry`.")
+            return False
+        self.state["attempts"][self.rev] = attempts + 1
+        self.state["repair"] = {"key": key, "head": pr["head"]["sha"], "base": pr["base"]["sha"],
+                                "revision": self.rev, "attempt": attempts + 1, "stage": "reserved", "run": self.run_url}
+        self.state.setdefault("runs", []).append({"revision": self.rev, "attempt": attempts + 1, "url": self.run_url})
+        self.save("in-progress", f"Repairing PR #{pr['number']}, head `{pr['head']['sha']}`; attempt {attempts + 1}/3.")
+        return True
 
     def check_pr(self, number):
         pr = self.client.api("GET", f"/pulls/{number}")
@@ -195,18 +236,171 @@ class Worker:
         elif pr["state"] == "closed":
             self.save("blocked", f"{pr['html_url']} was closed without merging. Resolve its disposition before retrying.")
         else:
-            sha = pr["head"]["sha"]
-            checks = self.client.api("GET", f"/commits/{sha}/check-runs?filter=latest&per_page=100")["check_runs"]
-            statuses = self.client.api("GET", f"/commits/{sha}/status")["statuses"]
-            failed = [c["name"] for c in checks if c.get("conclusion") in FAILURES]
-            failed += [s["context"] for s in statuses if s["state"] in ("failure", "error")]
-            message = f"PR: {pr['html_url']}\n\n"
-            message += ("Failing current-head checks: " + ", ".join(sorted(set(failed))) if failed
-                        else "Waiting for required CI, independent automated review, and the owner's manual merge.")
-            fingerprint = [sha, sorted(set(failed)), pr["state"]]
-            if self.state.get("pr_status") != fingerprint:
-                self.state["pr_status"] = fingerprint
-                self.save("blocked" if failed else "in-progress", message)
+            if not self.authorize_repair(pr):
+                return
+            try:
+                if self.state.get("repair", {}).get("pending"):
+                    self.recover_repair(pr)
+                    return
+                evidence = repair_checks(self.reader, pr, self.reviewer_app)
+                key = repair_fingerprint(evidence)
+                if evidence["stage"] == "repair":
+                    self.repair_pr(pr, evidence, key)
+                elif self.state.get("pr_status") != [evidence["head"], evidence["base"], evidence["stage"], evidence.get("task")]:
+                    # An identical ready/waiting stage must not rewrite the ledger
+                    # for every newly-issued review check and cause a review loop.
+                    self.state["pr_status"] = [evidence["head"], evidence["base"], evidence["stage"], evidence.get("task")]
+                    message = ("Ready for owner's manual rebase merge; current-head CI and independent review passed."
+                               if evidence["stage"] == "ready" else "Waiting for fresh required CI and independent review.")
+                    self.save("in-progress", f"PR: {pr['html_url']}\n\n{message}")
+            except Exception as error:
+                # A state-save response can be lost too. Recover the durable record
+                # before recording failure, rather than erasing a pending publication.
+                self.state, self.comment_id = load_state(list(self.client.pages(self.path + "/comments")), self.bot)
+                repair = self.state.get("repair", {})
+                if not repair.get("pending"):
+                    repair["stage"] = "blocked"
+                detail = str(error)[:500] if type(error) in (ValueError, RuntimeError, ApiError, TimeoutError) else type(error).__name__
+                message = f"Repair blocked ({type(error).__name__}): {detail}. No merge requested; inspect this run or use an eligible retry."
+                if self.state.get("message") != message:
+                    self.save("blocked", message)
+
+    def develop(self, sandbox, context, triage):
+        """The same plan/implement/complete verification path for initial work and repairs."""
+        context["triage"] = triage
+        plan = phase(sandbox, "plan", context, self.deadline)
+        if plan["status"] != "ready":
+            self.pause_phase(plan)
+            return None
+        contract = safe_path(plan["contract"])
+        if plan["kind"] != triage["kind"]:
+            raise ValueError("Plan changed issue classification; clarify requirements before implementation")
+        if not contract.startswith("openspec/"):
+            raise ValueError("Plan must reference an OpenSpec contract")
+        self.check(sandbox, "test -f " + shlex.quote(contract))
+        evidence = f"Contract/plan: `{contract}`.\n"
+        if plan["kind"] == "bug":
+            if not plan["regression"].strip():
+                raise ValueError("Bug plan omitted runnable regression evidence")
+            code, output, truncated = sandbox.run(plan["regression"])
+            if not 1 <= code <= 125 or truncated:
+                raise RuntimeError("Regression check did not fail normally before implementation or its evidence was truncated")
+            evidence += f"\nRegression command: `{plan['regression']}`\n\nBefore fix (exit {code}):\n```text\n{output[-6000:]}\n```\n"
+        elif plan["kind"] == "feature":
+            planned = sandbox.changes()
+            if not any(c["path"].startswith("openspec/changes/") and c["content"] for c in planned):
+                raise ValueError("Feature plan did not produce OpenSpec artifacts")
+            if not re.fullmatch(r"openspec/changes/[a-z0-9-]+/tasks\.md", contract):
+                raise ValueError("Feature contract must identify its change's tasks.md")
+            folder = contract.removesuffix("/tasks.md")
+            self.check(sandbox, " && ".join("test -f " + shlex.quote(folder + "/" + name)
+                                           for name in ("proposal.md", "design.md", "tasks.md"))
+                       + " && test -d " + shlex.quote(folder + "/specs")
+                       + " && node_modules/.bin/openspec validate " + shlex.quote(folder.split("/")[-1]) + " --strict")
+        elif plan["kind"] != "maintenance" or "repair" not in context:
+            raise ValueError("Maintenance classification is restricted to non-code repair acceptance")
+        elif not plan["regression"].strip():
+            raise ValueError("Non-code repair plan omitted its runnable acceptance check")
+        context["plan"] = plan
+        for name in ("implement", "complete"):
+            result = phase(sandbox, name, context, self.deadline)
+            if result["status"] not in (("ready", "complete") if name == "implement" else ("complete",)):
+                self.pause_phase(result)
+                return None
+            if plan["kind"] in ("bug", "maintenance"):
+                self.check(sandbox, plan["regression"])
+            self.verify(sandbox)
+            context["verification"] = "Regression/acceptance (if applicable), python3 scripts/check.py, and python3 scripts/package_check.py passed."
+        return result, evidence + "\n" + context["verification"]
+
+    def pause_phase(self, result):
+        status = "needs-information" if result["status"] == "needs-information" else "blocked"
+        if self.state.get("repair"):
+            self.state["repair"]["stage"] = status
+        self.save(status, result["summary"])
+
+    def repair_pr(self, pr, evidence, key):
+        if not self.reserve_repair(key, pr):
+            return
+        from independent_review import metadata
+
+        context = {"issue": {"number": self.number, "title": self.issue["title"], "body": self.issue.get("body")},
+                   "repair": evidence, "discussion": metadata(self.reader, self.reader, pr["number"])}
+        repair_fingerprint(context)  # Check the COMPLETE task, not just individual diagnostics.
+        seed = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+        changes = overlay(self.reader, seed, pr["head"]["sha"])
+        with Sandbox(self.runtime) as sandbox:
+            sandbox.import_head(changes)
+            triage = phase(sandbox, "triage", context, self.deadline)
+            if triage["status"] != "ready" or triage["duplicates"]:
+                self.pause_phase(triage)
+                return
+            self.check(sandbox, "git reset --hard " + sandbox.base + " && git clean -fd")
+            developed = self.develop(sandbox, context, triage)
+            if developed is None:
+                return
+            result, verification = developed
+            exported = sandbox.changes()
+            if context["plan"]["kind"] == "maintenance" and any(
+                    not (c["path"].endswith((".md", ".txt", ".rst")) or c["path"].endswith("/.openspec.yaml"))
+                    for c in exported):
+                raise ValueError("Non-code maintenance repair changed executable/configuration source; classify code work as bug or feature")
+            self.assert_repair_current(pr, key)
+            commit = self.client.api("GET", "/git/commits/" + pr["head"]["sha"])
+            tree = self.make_tree(exported, commit["tree"]["sha"])
+            now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            identity = {"name": "Rootprint worker", "email": "worker@invalid", "date": now}
+            self.state["repair"]["pending"] = {
+                "message": f"fix: repair PR #{pr['number']} for issue #{self.number}",
+                "tree": tree, "parents": [pr["head"]["sha"]], "author": identity, "committer": identity}
+            self.state["repair"]["summary"] = (result["summary"] + "\n\n" + verification)[:16000]
+            self.save("in-progress", "Repair verified; recovering/publishing a non-force child commit on the existing PR.")
+            self.recover_repair(pr)
+
+    def make_tree(self, changes, base_tree):
+        tree = []
+        for change in validate_changes(changes):
+            oid = None
+            if change["content"] is not None:
+                oid = self.client.api("POST", "/git/blobs", {"encoding": "base64", "content": change["content"]})["sha"]
+            tree.append({"path": change["path"], "mode": change["mode"], "type": "blob", "sha": oid})
+        return self.client.api("POST", "/git/trees", {"base_tree": base_tree, "tree": tree})["sha"]
+
+    def assert_repair_current(self, expected, key):
+        current = self.client.api("GET", f"/pulls/{expected['number']}")
+        issue = self.client.api("GET", self.path)
+        comments = list(self.client.pages(self.path + "/comments"))
+        def identity(p):
+            return [p["number"], p["state"], p.get("draft"), p["user"]["login"],
+                    p["head"]["sha"], p["head"]["ref"], p["head"]["repo"]["full_name"],
+                    p["base"]["sha"], p["base"]["ref"], p["base"]["repo"]["full_name"]]
+        if (issue["state"] != "open" or revision(issue, comments) != self.state["repair"]["revision"]
+                or identity(current) != identity(expected)
+                or repair_fingerprint(repair_checks(self.reader, current, self.reviewer_app)) != key):
+            raise ValueError("Issue, PR head/base/identity or applicable failure changed during repair; stale result not published")
+
+    def recover_repair(self, pr):
+        repair = self.state["repair"]
+        intent = repair["pending"]
+        if "candidate" not in repair:
+            repair["candidate"] = self.client.api("POST", "/git/commits", intent)["sha"]
+            self.save("in-progress", "Repair commit recorded; checking the branch before non-force publication.")
+        candidate = repair["candidate"]
+        head = pr["head"]["sha"]
+        if head != candidate:
+            comparison = self.client.api("GET", f"/compare/{candidate}...{head}?per_page=1")
+            if comparison.get("status") not in ("ahead", "identical"):
+                if head != repair["head"]:
+                    raise ValueError("Worker branch changed; pending repair cannot overwrite intervening commits")
+                self.assert_repair_current(pr, repair["key"])
+                self.client.api("PATCH", "/git/refs/heads/" + quote(self.state["branch"], safe="/"),
+                                {"sha": candidate, "force": False})
+        self.state["commit"] = candidate
+        repair["stage"] = "finished"
+        del repair["pending"]
+        self.state.pop("pr_status", None)
+        self.save("in-progress", f"Published repair `{candidate}` on PR #{pr['number']}. Waiting for fresh CI/review and owner manual merge.\n\n"
+                  + repair.get("summary", ""))
 
     def open_pr(self):
         branch = self.state["branch"]
@@ -238,16 +432,11 @@ class Worker:
         changes = validate_changes(changes)
         base = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
         commit = self.client.api("GET", "/git/commits/" + base)
-        tree = []
-        for change in changes:
-            sha = None
-            if change["content"] is not None:
-                sha = self.client.api("POST", "/git/blobs", {"encoding": "base64", "content": change["content"]})["sha"]
-            tree.append({"path": change["path"], "mode": change["mode"], "type": "blob", "sha": sha})
-        tree_sha = self.client.api("POST", "/git/trees", {"base_tree": commit["tree"]["sha"], "tree": tree})["sha"]
+        tree_sha = self.make_tree(changes, commit["tree"]["sha"])
         sha = self.client.api("POST", "/git/commits", {"message": f"fix: address issue #{self.number}",
                                                       "tree": tree_sha, "parents": [base]})["sha"]
         self.state.update(commit=sha, branch=f"automation/issue-{self.number}-{self.rev[:12]}",
+                          repair_revision=self.rev,
                           default_branch=self.client.api("GET", "")["default_branch"],
                           pr_body=report["summary"] + "\n\n" + evidence)
         # Persist before branch/PR writes, so a lost response can be reconciled.
@@ -302,60 +491,17 @@ class Worker:
                     self.save("triage", triage["summary"] + "\n\nOwner: apply `ready` to authorize an implementation attempt.")
                     return
                 self.check(sandbox, "git reset --hard " + sandbox.base + " && git clean -fd")
-                context["triage"] = triage
-                plan = phase(sandbox, "plan", context, self.deadline)
-                if plan["status"] != "ready":
-                    self.save("needs-information" if plan["status"] == "needs-information" else "blocked", plan["summary"])
+                developed = self.develop(sandbox, context, triage)
+                if developed is None:
                     return
-                contract = safe_path(plan["contract"])
-                if plan["kind"] != triage["kind"]:
-                    raise ValueError("Plan changed issue classification; clarify requirements before implementation")
-                if not contract.startswith("openspec/"):
-                    raise ValueError("Plan must reference an OpenSpec contract")
-                self.check(sandbox, "test -f " + shlex.quote(contract))
-                evidence = f"Contract/plan: `{contract}`.\n"
-                if plan["kind"] == "bug":
-                    if not plan["regression"].strip():
-                        raise ValueError("Bug plan omitted runnable regression evidence")
-                    code, output, _ = sandbox.run(plan["regression"])
-                    if not 1 <= code <= 125:
-                        raise RuntimeError("Regression check did not fail normally before implementation")
-                    evidence += f"\nRegression command: `{plan['regression']}`\n\nBefore fix (exit {code}):\n```text\n{output[-6000:]}\n```\n"
-                else:
-                    planned = sandbox.changes()
-                    if not any(c["path"].startswith("openspec/changes/") and c["content"] for c in planned):
-                        raise ValueError("Feature plan did not produce OpenSpec artifacts")
-                    if not re.fullmatch(r"openspec/changes/[a-z0-9-]+/tasks\.md", contract):
-                        raise ValueError("Feature contract must identify its change's tasks.md")
-                    folder = contract.removesuffix("/tasks.md")
-                    self.check(sandbox, " && ".join("test -f " + shlex.quote(folder + "/" + name)
-                                                   for name in ("proposal.md", "design.md", "tasks.md"))
-                               + " && test -d " + shlex.quote(folder + "/specs")
-                               + " && node_modules/.bin/openspec validate " + shlex.quote(folder.split("/")[-1]) + " --strict")
-                context["plan"] = plan
-                result = phase(sandbox, "implement", context, self.deadline)
-                if result["status"] not in ("ready", "complete"):
-                    self.save("needs-information" if result["status"] == "needs-information" else "blocked", result["summary"])
-                    return
-                if plan["kind"] == "bug":
-                    self.check(sandbox, plan["regression"])
-                self.verify(sandbox)
-                context["verification"] = "Regression (if bug), python3 scripts/check.py, and python3 scripts/package_check.py passed."
-                result = phase(sandbox, "complete", context, self.deadline)
-                if result["status"] != "complete":
-                    self.save("needs-information" if result["status"] == "needs-information" else "blocked", result["summary"])
-                    return
-                # Completion can update artifacts. Verify the exact resulting tree again.
-                if plan["kind"] == "bug":
-                    self.check(sandbox, plan["regression"])
-                self.verify(sandbox)
+                result, evidence = developed
                 # Re-fetch task data; do not publish a result for a superseded revision.
                 current = self.client.api("GET", self.path)
                 comments = list(self.client.pages(self.path + "/comments"))
                 if current["state"] != "open" or revision(current, comments) != self.rev:
                     self.save("blocked", "Issue changed or closed during implementation; result was not published. Reapply ready after triage.")
                     return
-                self.publish(sandbox.changes(), result, evidence + "\n" + context["verification"])
+                self.publish(sandbox.changes(), result, evidence)
         except Exception as error:
             # Never copy provider/process exception bodies, environment, or secret-bearing logs into GitHub.
             kind = type(error).__name__
@@ -432,7 +578,7 @@ def main():
         numbers = discover(GitHub(os.environ["GITHUB_TOKEN"], os.environ["GITHUB_REPOSITORY"]), event, args.issue)
         print(json.dumps(numbers))
         return
-    required = ("IMPLEMENTATION_APP_ID", "IMPLEMENTATION_APP_PRIVATE_KEY", "OPENAI_API_KEY")
+    required = ("IMPLEMENTATION_APP_ID", "IMPLEMENTATION_APP_PRIVATE_KEY", "OPENAI_API_KEY", "GITHUB_TOKEN", "REVIEWER_APP_ID")
     missing = [name for name in required if not os.environ.get(name)]
     if missing:
         print(json.dumps({"active": False, "missing": missing}))
@@ -441,7 +587,8 @@ def main():
     try:
         ensure_labels(client)
         if args.issue:
-            Worker(client, bot, args.issue, args.runtime).execute()
+            Worker(client, bot, args.issue, args.runtime,
+                   reader=GitHub(os.environ["GITHUB_TOKEN"], client.repo)).execute()
         else:
             track_ci_failure(client, event)
     finally:

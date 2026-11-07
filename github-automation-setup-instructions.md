@@ -15,6 +15,13 @@ and remaining worker acceptance. This guide describes setup for a deployment;
 `python scripts/activation.py` reports historical evidence, not live health.
 Automatic merging remains a later integration.
 
+Existing-PR repairs are implemented locally and require deployment plus controlled
+hosted acceptance. Initial `ready` covers bounded repairs on the same worker PR,
+sharing three attempts with initial implementation. The workflow's token gains
+only explicit Actions/checks/PR/contents/issues read permissions for diagnostics;
+App writes and the manual owner merge remain unchanged. See the worker guide for
+legacy authorization, operational blockers and publication recovery.
+
 ## Rollout stages
 
 1. **CI only:** verify that GitHub tests PRs successfully.
