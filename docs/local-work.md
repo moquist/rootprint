@@ -1,5 +1,24 @@
 # Local work ledger
 
+## Latest session handoff — 2026-11-07 (PR #25 conflict refresh)
+
+- PR #25's published head is `bad80db99d6f4171b1295f683ceaf81db518719c`.
+  Main advanced to `debbe91` after the clarification-context plan merged.
+  Prepared `work/worker-documentation-plans-refreshed` on that base while retaining
+  the original local/published planning branch. Replaying its one planning commit
+  reproduced a content conflict only in `docs/local-work.md`.
+- Resolved by retaining both complete planning handoffs. All five documentation/
+  guidance change files are byte-identical to `bad80db`; the merged clarification
+  artifacts are byte-identical to current main. This refresh remains planning only:
+  neither change's implementation/acceptance tasks were marked complete.
+- Credential-free `python3 scripts/check.py` passed both five-test language suites,
+  47 script checks, Ruff and all 11 strict changes. Whitespace checks pass. No
+  runtime, package, workflow, protocol, vector or asset files changed.
+- Owner updates the existing PR branch from this refreshed branch using an
+  explicit force-with-lease against the published head above. Agents do not push
+  or rewrite published history. Fresh current-head CI and independent review remain
+  required before manual rebase merge; no remote PR/check/settings mutation occurred.
+
 ## Latest session handoff — 2026-11-07 (clarification-context fix planned)
 
 - PR #22 merged as `01295c9` after final head `82d439f` passed CI and independent
@@ -29,6 +48,40 @@
   are complete. No project runtime/test code changed. Next is a separate apply
   request; owner publication still requires fresh CI, independent review and manual
   rebase merge, followed by a new controlled short-answer acceptance run.
+
+## Latest session handoff — 2026-11-07 (documentation intake and issue guidance planned)
+
+- Created `docs/worker-documentation-plans` from fetched main `01295c9` for new
+  change `support-worker-documentation-plans`. The clarification-context plan is
+  preserved independently on `docs/preserve-clarification-context` at `a2869c0`;
+  neither its artifacts nor issue #23 were changed by this planning task.
+- #23's owner supplied explicit README wording, but the worker then reported
+  `Plan must reference an OpenSpec contract` (run `42416005748`). Inspected both
+  development/publication paths: `maintenance` already exists in the report schema
+  but is restricted to PR repair; initial triage policy describes only bug/feature,
+  and the documentation output guard is repair-only. The exact live phase report
+  is unavailable, so its classification/contract value is not asserted.
+- Offline reproduction with a valid existing maintenance process reference:
+  `env -i HOME=/tmp/opencode PATH="$PWD/.venv/bin:$PATH" PYTHONPATH="$PWD/scripts" python3 /tmp/opencode/reproduce_documentation_plan.py`.
+  It fails with `Maintenance classification is restricted to non-code repair acceptance`.
+  No model/provider/GitHub call or project runtime/test edit was made.
+- Plan reuses maintenance for initial docs issues, worker-selected process contracts,
+  runnable acceptance rather than invented code regressions, and shared final
+  documentation path/mode checks before initial and repair publication. Code,
+  executable policy, configuration and normative requirement changes retain their
+  proper routes. Existing verification, authorization and attempt limits remain.
+- Owner also requires actionable prompts directly in GH issues. Added the
+  `worker-issue-guidance` delta with state/reason-specific Next step instructions:
+  answer a clarification, add `ready`, resolve setup or worker defects first, use
+  an eligible retry, wait for checks, manually rebase-merge, or take no further
+  action when done. `ready` triggers automatic needs-information cleanup; no
+  redundant manual removal is required. Guidance is trusted/bounded/idempotent
+  and separate from task questions or retained clarification history.
+- Proposal, spec, design and seven unchecked tasks are ready. Focused and all-change
+  strict validation pass (10 changes on this branch); whitespace passes. This is
+  planning only (0/7 tasks complete). Next is a separate apply request and ordinary
+  owner publication/current-head CI/independent review/manual merge, followed by
+  controlled docs-intake/prompt acceptance. No push, issue update or merge occurred.
 
 ## Latest session handoff — 2026-11-07 (PR #22 independent-review fixes)
 
