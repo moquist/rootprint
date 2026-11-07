@@ -7,9 +7,9 @@ import json
 import re
 
 from worker_sandbox import MAX_PATCH, validate_changes
+from worker_agent import MAX_CONTEXT
 
 CI_APP = 15368
-MAX_CONTEXT = 90000
 
 
 def sha(value):
@@ -103,11 +103,17 @@ def checks(reader, pr, reviewer_app):
             if len(runs) != 1 or suite is None:
                 raise ValueError("CI run diagnostics are unavailable or superseded")
             jobs = api_items(reader, f"/actions/runs/{int(runs[0]['id'])}/attempts/{int(runs[0]['run_attempt'])}/jobs", "jobs")
-            failed = [j for j in jobs if j.get("conclusion") == "failure" and j.get("name") != "ci"]
+            matrix = [j for j in jobs if j.get("name") != "ci"]
+            if any(j.get("status") != "completed" or j.get("conclusion") not in ("success", "failure") for j in matrix):
+                raise ValueError("CI matrix has operational, unfinished or unsupported outcomes; source repair paused")
+            failed = [j for j in matrix if j["conclusion"] == "failure"]
             if not failed:
                 raise ValueError("CI failure has no complete failed-job diagnostics")
             diagnostics = []
             for job in failed:
+                if any(s.get("status") != "completed" or s.get("conclusion") not in ("success", "failure", "skipped")
+                       for s in job.get("steps", [])):
+                    raise ValueError("CI verification steps have operational or unfinished outcomes; source repair paused")
                 steps = [s for s in job.get("steps", []) if s.get("conclusion") == "failure"]
                 # Only baseline verification failures are reproducible source repair input.
                 if not steps or any(s["name"] not in ("Run python scripts/check.py", "Run python scripts/package_check.py")

@@ -4,6 +4,9 @@ import copy
 import base64
 import hashlib
 import json
+from pathlib import Path
+from types import SimpleNamespace
+import time
 import unittest
 from unittest.mock import patch
 
@@ -12,6 +15,7 @@ from issue_worker import ApiError, Worker, revision
 from test_independent_review import answer
 from test_issue_worker import FakeGitHub, FakeSandbox, report
 from worker_repair import checks, overlay
+from worker_agent import phase
 
 
 class Repository(FakeGitHub):
@@ -76,10 +80,11 @@ class Repository(FakeGitHub):
                                           "path": ".github/workflows/ci.yml", "run_attempt": 1,
                                           "status": "completed", "conclusion": "failure"}]}
             if path.startswith("/actions/runs/77/attempts/1/jobs?"):
-                return {"jobs": [{"id": 88, "name": "verify linux", "conclusion": "failure",
+                return {"jobs": [{"id": 88, "name": "verify linux", "status": "completed", "conclusion": "failure",
                                   "check_run_url": "https://api.github.com/repos/owner/repo/check-runs/88", "steps": [
-                    {"name": "Set up runner" if self.ci_infra else "Run python scripts/check.py", "conclusion": "failure"}]},
-                                 {"id": 89, "name": "ci", "conclusion": "failure",
+                    {"name": "Set up runner" if self.ci_infra else "Run python scripts/check.py",
+                     "status": "completed", "conclusion": "failure"}]},
+                                 {"id": 89, "name": "ci", "status": "completed", "conclusion": "failure",
                                   "steps": [{"name": "Require successful matrix", "conclusion": "failure"}]}]}
             if path.startswith("/git/trees/"):
                 source = self.head_source if path.split("/")[-1].split("?")[0] == self.pr["head"]["sha"] else self.source
@@ -130,6 +135,85 @@ class RepairSandbox(FakeSandbox):
 
 
 class RepairFlow(unittest.TestCase):
+    def test_each_actual_phase_bounds_final_serialized_context_after_report_growth(self):
+        def run(args, **kwargs):
+            Path(kwargs["cwd"], "phase-result.json").write_text(json.dumps(report()), encoding="utf-8")
+            return SimpleNamespace(returncode=0)
+
+        with patch.dict("os.environ", {"OPENAI_API_KEY": "synthetic-not-a-real-key"}), \
+                patch("worker_agent.subprocess.run", side_effect=run) as process:
+            for name, additions in (("triage", {}), ("plan", {"triage": report()}),
+                                    ("implement", {"triage": report(), "plan": report()}),
+                                    ("complete", {"triage": report(), "plan": report(), "verification": "passed"})):
+                with self.subTest(phase=name):
+                    # Exactly 90,000 serialized task characters are accepted without truncation.
+                    context = {"repair": {}, **additions, "padding": ""}
+                    context["padding"] = "x" * (90000 - len(json.dumps(context)))
+                    self.assertEqual(len(json.dumps(context)), 90000)
+                    phase(RepairSandbox(), name, context, time.monotonic() + 60)
+                    prompt = process.call_args.args[0][-1]
+                    self.assertTrue(prompt.endswith(json.dumps(context)))
+                    # Subsequent reports, not just original issue data, count against the same limit.
+                    if name == "triage":
+                        context["padding"] += "x"
+                    elif name == "plan":
+                        context["triage"]["summary"] += " grew after triage"
+                    elif name == "implement":
+                        context["plan"]["summary"] += " grew after planning"
+                    else:
+                        context["verification"] += " grew after verification"
+                    calls = process.call_count
+                    with self.assertRaisesRegex(ValueError, "90,000"):
+                        phase(RepairSandbox(), name, context, time.monotonic() + 60)
+                    self.assertEqual(process.call_count, calls)
+
+    def test_mixed_source_and_operational_matrix_outcomes_block_repair(self):
+        for status, conclusion in (("completed", "timed_out"), ("completed", "cancelled"),
+                                   ("queued", None), ("in_progress", None), ("completed", "skipped"),
+                                   ("completed", "neutral"), ("completed", "action_required"),
+                                   ("completed", "startup_failure"), ("completed", "unknown"),
+                                   ("completed", "success")):
+            with self.subTest(status=status, conclusion=conclusion):
+                repo = Repository()
+                repo.initialize()
+                repo.review_failure(success=True)
+                repo.checks[0]["conclusion"] = "failure"
+                api = repo.api
+
+                def mixed(method, path, data=None):
+                    result = api(method, path, data)
+                    if "/attempts/1/jobs?" in path:
+                        result["jobs"].append({"id": 90, "name": "verify macos", "status": status,
+                                               "conclusion": conclusion, "steps": []})
+                    return result
+
+                with patch.object(repo, "api", side_effect=mixed):
+                    if conclusion == "success":
+                        self.assertEqual(checks(repo, repo.pr, 123)["stage"], "repair")
+                    else:
+                        with self.assertRaisesRegex(ValueError, "operational|unfinished"):
+                            checks(repo, repo.pr, 123)
+
+        for conclusion in ("timed_out", "cancelled", "skipped", "success"):
+            repo = Repository()
+            repo.initialize()
+            repo.review_failure(success=True)
+            repo.checks[0]["conclusion"] = "failure"
+            api = repo.api
+
+            def mixed_steps(method, path, data=None):
+                result = api(method, path, data)
+                if "/attempts/1/jobs?" in path:
+                    result["jobs"][0]["steps"].append({"name": "Another step", "status": "completed", "conclusion": conclusion})
+                return result
+
+            with patch.object(repo, "api", side_effect=mixed_steps):
+                if conclusion in ("success", "skipped"):
+                    self.assertEqual(checks(repo, repo.pr, 123)["stage"], "repair")
+                else:
+                    with self.assertRaisesRegex(ValueError, "operational|unfinished"):
+                        checks(repo, repo.pr, 123)
+
     def test_typed_review_output_distinguishes_rejection_and_infrastructure(self):
         from independent_review import review
         from test_independent_review import Repository as ReviewRepository

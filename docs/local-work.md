@@ -1,5 +1,40 @@
 # Local work ledger
 
+## Latest session handoff — 2026-11-07 (PR #22 independent-review fixes)
+
+- PR https://github.com/moquist/rootprint/pull/22 is open at published head
+  `b6d5440`, base `22054ac`. Its CI matrix passed, but reviewer App `5631539`
+  check `128520994820` rejected two real acceptance gaps:
+  https://github.com/moquist/rootprint/actions/runs/42411662221. This was a code
+  rejection, not provider failure or context overflow. No retry of unchanged code
+  was requested.
+- Reproduced both findings before fixes with
+  `python3 -m unittest discover -s scripts -p test_pr_repair.py`: the two new checks
+  failed in 13 subcases (all four oversized phase requests plus nine mixed
+  source/operational matrix outcomes). They reference the existing bounded-input
+  and complete/actionable-diagnostic contract, not a new requirement.
+- Fixed the shared `worker_agent.phase` boundary: serialize final task data once,
+  enforce the shared 90,000-character ceiling before any OpenCode launch, and send
+  exactly that checked serialization. Reports added by triage/planning and final
+  verification count on every actual request, including initial-issue phases.
+  Exact-limit tasks remain accepted; overflow is rejected without truncation or
+  subprocess invocation.
+- Fixed CI classification to inspect all non-aggregate matrix jobs before selecting
+  failed source-verification jobs. Operational, unfinished and unsupported outcomes
+  now block mixed-failure repair, including timeouts/cancellation alongside a source
+  failure. Failed-job steps are likewise checked before filtering; normal successful
+  sibling jobs and successful/skipped cleanup steps still permit actionable repair.
+- Credential-free `python3 scripts/check.py` passed both five-test port suites,
+  47 script checks, Ruff and all nine strict changes. The focused repair suite now
+  has 15 passing checks, including exact context boundaries, report-driven growth,
+  mixed job/step outcomes and positive controls. Workflow, sandbox execution
+  boundary, package/protocol/vector bytes and README test commands are unchanged.
+- Repairs are appended locally on the same `feat/worker-pr-repair` branch. Owner
+  next runs `git push origin feat/worker-pr-repair` to update PR #22; new-head CI and
+  independent review are required before manual rebase merge. No agent push, check
+  retry, remote settings mutation or merge occurred. Hosted acceptance tasks 5.2–5.3
+  remain open; local fixes do not claim reviewer approval or deployment acceptance.
+
 ## Latest session handoff — 2026-11-07 (existing worker PR repairs implemented locally)
 
 - Owner merged the planning PR; implementation branch `feat/worker-pr-repair`
