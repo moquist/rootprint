@@ -73,6 +73,26 @@ comment: missing durable history cannot establish an accurate attempt budget.
 Lifecycle labels are `triage`, `needs-information`, `ready`, `in-progress`,
 `blocked`, and `done`; other labels are preserved.
 
+Clarification questions are retained in that same App-authored state record across
+generic status updates, restarts, retries and existing-PR repairs. Each records its
+issue revision, worker run and the last observed human comment ID; human answers
+remain native issue comments. Models receive the complete human discussion with
+IDs/authors plus ordered question history and its worker/state-comment provenance.
+All of it is untrusted task evidence, including prior worker text: agreement can
+resolve a question but cannot authorize implementation, tools, retries or merging.
+
+Legacy state remains readable. A still-present `needs-information` message is
+retained before overwrite, with unknown original revision/comment position. An
+already-erased question is not reconstructed; supply the missing context explicitly.
+Do not edit the state to manufacture history. Malformed history stops processing.
+The complete state comment is capped at 60,000 characters; an oversized candidate
+cannot replace the last valid record. The worker reports a state-capacity failure
+in its run if it cannot save even a bounded blocker. Human replies and questions
+are never silently clipped to fit: the complete serialized task must fit 90,000
+characters at every model phase, including prior reports and verification text.
+Overflow blocks work with a context-limit diagnostic; resolve the issue's scope/
+discussion size before retrying rather than increasing budgets implicitly.
+
 Each revision allows at most three implementation attempts. Revision identity
 and its initial `ready` authorization cover both implementation and bounded repairs
 on its existing worker PR; commits/check reruns do not reset the budget. New issue
