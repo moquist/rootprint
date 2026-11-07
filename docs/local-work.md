@@ -18,6 +18,28 @@
   and visual-review instructions). README change remains CLI-first documentation
   only. Current-head checks and owner merge remain required; issue #12 is not
   complete until merged. No agent push or published-history update occurred.
+- Refresh verification passed on Linux: both exact README stdin pipelines emit
+  `rootprint-v1`/`sha256`, full digest
+  `d331f806a7ada5308a00a03f350fd885f492ee54ea4d621af24ef45ba9b88559`, live UTC
+  metadata and the matching 24-character label suffix. Both exact secondary API
+  blocks pass their assertions and emit the documented fixed-clock digest/label.
+  Setup/all-tests text is byte-identical to current main; CLI demos precede APIs.
+- Credential-free `PATH="$PWD/.venv/bin:$PATH" python3 scripts/check.py` passes
+  both ports, 31 script checks, Ruff and all eight strict changes.
+  `python3 scripts/package_check.py` builds/installs both distributions and passes
+  their real CLI/error/API checks; `git diff --check` passes. No runtime, dependency,
+  protocol, vector or asset bytes changed. Check script:
+  `/tmp/opencode/check_readme_usage.py` (executes the four README blocks verbatim).
+- Deployed main coordinator/hosted entrypoint replay of snapshot `146e25b` on
+  `2140a18` uses complete actual PR #14/issue #12 discussions plus another
+  8,192-byte discussion allowance: 622,437 text bytes, leaving 577,563 below the
+  1,200,000-byte ceiling. Metadata digest:
+  `af1997ab975815b32955cc4cbcb5047530d360cff1614c85667a7e71ba6fdf48`.
+  Replay: `/tmp/opencode/replay_review_refresh.py 14`; no model request or PR source
+  execution. Final evidence commit is measured again before handoff.
+- Budget bridge task 1.3 is now evidenced by owner deployment and merged PR #18's
+  exact-head CI/App approval above. PR #14 still needs owner publication, fresh
+  checks and rebase merge; its original remote branch/head remains unchanged.
 
 ## Latest session handoff — 2026-11-06 (PR #18 refresh verified locally)
 
