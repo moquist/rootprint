@@ -1,5 +1,29 @@
 # Local work ledger
 
+## Latest session handoff — 2026-11-07 (repair planning PR prepared)
+
+- Owner merged activation PR https://github.com/moquist/rootprint/pull/20;
+  fetched main is `99e4e6a431ad6c196034dbf1520362c5e0dfe581`. Its exact original
+  head `a342086` passed CI run `42402310045` and independent-review run
+  `42402310052`. Created `docs/worker-pr-repair-plan` from that merged base and
+  cherry-picked only planning commit `e62f668` as `052c4e8`; preserved the old
+  published branch/history. The PR diff is the five change files plus this ledger.
+- Reverification passed: credential-free `python3 scripts/check.py` (both five-test
+  port suites, 32 script checks, Ruff, nine strict changes), focused strict repair
+  change validation and whitespace checks. All 12 implementation tasks stay open.
+- Deployed-reviewer sizing replay accepted planning snapshot `052c4e8`: 671,985
+  text bytes, 528,015 below the hosted limit, using PR #20's discussion as a proxy
+  plus 8,192 bytes headroom. This is a source/context budget check, not review of
+  a newly created PR or model approval. Replay script:
+  `/tmp/opencode/replay_review_refresh.py 20 HEAD`; final handoff commit is sized
+  separately. No model request or PR source execution occurred.
+- PR title: `docs: plan bounded worker PR repairs with manual merging`.
+  Prepared body: `/tmp/opencode/worker-pr-repair-plan-pr.md`. Owner publishes with
+  `git push -u origin docs/worker-pr-repair-plan`, then opens a PR to `main` using
+  that title/body. Wait for fresh `ci` and `independent-review`, then manually
+  rebase-merge before requesting the separate apply phase. No agent push, PR
+  creation, implementation, remote setting change or merge occurred.
+
 ## Latest session handoff — 2026-11-07 (bounded PR repair planning)
 
 - Owner approved specifying automatic repairs to existing worker PRs while keeping
