@@ -1,5 +1,54 @@
 # Local work ledger
 
+## Latest session handoff — 2026-11-07 (bootstrap hosted evidence reconciliation)
+
+- Owner rebase-merged PR https://github.com/moquist/rootprint/pull/14 at
+  `2026-11-07T03:03:39Z`; fetched main is
+  `09534603aa76640ee8e23abd567e6e35301a90bd`. Issue #12 is closed. Its App-authored
+  [state comment](https://github.com/moquist/rootprint/issues/12#issuecomment-6688011714)
+  records `done` and the merged PR, confirmed by successful worker reconciliation
+  https://github.com/moquist/rootprint/actions/runs/42332113682. Earlier handoffs'
+  PR #14 publication/merge blockers are resolved.
+- Bootstrap task 4.1 is complete: exact published head
+  `13ed25479d6c9abeaf61bee136fad4518bf22182` passed all four matrix jobs (Linux,
+  macOS, Windows with Node 22/Python 3.11; Linux with Node 24/Python 3.14) and `ci`:
+  https://github.com/moquist/rootprint/actions/runs/42332002332. Inspected read-only
+  CI workflow runs both ports, integration, builds/static checks, strict specs and
+  packaged checks. Actions App `15368` check `128280773328` belongs to that head.
+- Bootstrap task 6.1 is complete: re-fetched App `5631539` checks `127743430168`
+  (old-head success), `127744827545` (new-head failure), and `127746465847`
+  (fresh new-head success). Historical pending/failure merge-blocking observations
+  are preserved in `docs/png-review-acceptance-evidence.json`; only their generic
+  freshness/gate evidence applies, not superseded image-content requirements.
+  Current image-excluding reviewer also approved PR #14's exact published head:
+  check `128280455200`, https://github.com/moquist/rootprint/actions/runs/42332000613.
+  Inspected workflow executes trusted default-branch orchestration, not PR code.
+- Re-read ruleset `26673301`: active, no bypass actors, strict App-bound `ci` and
+  `independent-review`, zero required human approvals, rebase-only and linear
+  history. Repository permits rebase only; `allow_auto_merge=false` remains true.
+  Bootstrap is now 17/27 complete; no automatic merge or publication is claimed.
+- Task 5.4 remains open: original worker run
+  https://github.com/moquist/rootprint/actions/runs/42243993367 passed its hosted
+  sandbox preflight and separate plan/implement/complete phases (artifacts retained
+  in `f3e17ed:docs/local-work.md`), but this documentation request had no failing
+  bug regression. The owner refreshed its branch before merge. This is evidence
+  of the manual-merge path, not all bootstrap acceptance scenarios.
+- Next local fix: `scripts/activation.py` hard-codes obsolete claims that hosted
+  CI, App/provider use and reviewer gates are unverified. Reproduce that inaccurate
+  status with a runnable check, then make the report distinguish recorded hosted
+  evidence from remaining activation requirements without treating recorded
+  evidence as a live health probe. Task 6.3 stays open until verified. Remaining
+  hosted checks include controlled bug/regression work, hostile input, repeated
+  events, exhausted attempts/recovery, and failure deduplication (tasks 5.2–5.5).
+  Auto-merge and release automation remain separate activation work.
+- Verification: credential-free `python3 scripts/check.py` passed both five-test
+  port suites, 31 script checks, Ruff and all eight strict changes. Actionlint
+  1.7.7 passed all three workflows. SSH fetch failed (missing usable public-key
+  authentication); public HTTPS fetch succeeded without changing remotes or
+  accessing credentials. Branch `docs/bootstrap-hosted-acceptance` starts from
+  fetched main. Agents do not push; owner publication still uses current-head CI
+  and independent review. Bootstrap and dependent deltas remain unarchived.
+
 ## Latest session handoff — 2026-11-06 (README CLI PR refresh)
 
 - Owner merged image-exclusion PR https://github.com/moquist/rootprint/pull/18;

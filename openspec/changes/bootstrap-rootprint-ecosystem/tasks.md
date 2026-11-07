@@ -23,7 +23,7 @@
 
 ## 4. Required verification pipeline
 
-- [ ] 4.1 Add read-only CI jobs for both language suites on Linux, macOS, and Windows, builds, static/type checks, and strict OpenSpec validation; verify workflow syntax and local equivalents, then verify the matrix when a GitHub remote is available.
+- [x] 4.1 Add read-only CI jobs for both language suites on Linux, macOS, and Windows, builds, static/type checks, and strict OpenSpec validation; verify workflow syntax and local equivalents, then verify the matrix when a GitHub remote is available.
 - [x] 4.2 Add cross-language integration checks comparing full records under fixed clocks and independently expected vectors, including packaged CLI behavior; verify failures when a canonicalization byte, array order, or digest prefix rule is deliberately perturbed in a disposable copy.
 - [x] 4.3 Document required check names, supported runtimes, and local reproduction commands; verify the documented commands complete from a clean checkout.
 
@@ -37,7 +37,7 @@
 
 ## 6. Independent review and merging
 
-- [ ] 6.1 Add fresh-context automated PR review tied to the current head SHA, without executing PR code in the privileged reviewer; verify an approving result becomes stale on a new commit and a failing review blocks merging.
+- [x] 6.1 Add fresh-context automated PR review tied to the current head SHA, without executing PR code in the privileged reviewer; verify an approving result becomes stale on a new commit and a failing review blocks merging.
 - [ ] 6.2 Add narrowly scoped automatic rebase merging behind required CI and review checks, using App-generated PRs to trigger normal checks; verify squash merging and merge commits are disabled, default-branch history remains linear, failed/missing/stale checks prevent merge, and a fully passing controlled PR merges without human approval.
 - [ ] 6.3 Document and expose activation checks for branch rules, no-bypass permissions, App installation, provider credentials, and runner isolation; verify absent configuration reports concrete blockers rather than claiming autonomy is active.
 
