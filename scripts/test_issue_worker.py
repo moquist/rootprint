@@ -131,6 +131,149 @@ class Lifecycle(unittest.TestCase):
         return Worker(client, "worker[bot]", 7)
 
     @patch("issue_worker.Sandbox", FakeSandbox)
+    def test_short_answer_retains_question_across_status_saves_and_fresh_phases(self):
+        # Bootstrap automated-maintenance: Automated issue lifecycle (issue #23).
+        client = FakeGitHub()
+        question = "Should invalid parser input raise ValueError as the existing contract specifies?"
+        answer = "Agreed. Please proceed as you suggest."
+        with patch("issue_worker.phase", return_value=report("needs-information", summary=question)):
+            self.worker(client).execute()
+        client.comments.append({"id": 101, "body": answer, "user": {"login": "owner", "type": "User"}})
+        worker = self.worker(client)
+        worker.save("triage", "Inspecting the report; implementation still requires ready.")
+        captured = []
+
+        def model(sandbox, name, context, deadline):
+            captured.append(copy.deepcopy(context))
+            if question not in json.dumps(context) or answer not in json.dumps(context):
+                return report("needs-information", summary=question)
+            return report("complete" if name in ("implement", "complete") else "ready")
+
+        with patch("issue_worker.phase", side_effect=model):
+            self.worker(client).execute()
+            self.assertIn(answer, json.dumps(captured[0]))
+            self.assertIn(question, json.dumps(captured[0]), "Owner reply survives, but its antecedent worker question is lost")
+            self.worker(client).execute()  # Bot status changes cannot retrigger unchanged triage.
+            self.assertEqual(len(captured), 1)
+            self.assertFalse(client.prs)  # Agreement alone is not implementation authorization.
+            self.assertEqual(client.state()["attempts"], {})
+            client.issue["labels"].append({"name": "ready"})
+            self.worker(client).execute()
+        self.assertEqual(len(captured), 5)
+        for context in captured:
+            self.assertIn(question, json.dumps(context))
+            self.assertIn(answer, json.dumps(context))
+        self.assertEqual(client.state()["pr"], 9)
+        self.assertEqual(list(client.state()["attempts"].values()), [1])
+
+    @patch("issue_worker.Sandbox", FakeSandbox)
+    def test_retained_unanswered_question_still_pauses(self):
+        client = FakeGitHub(ready=True)
+        self.worker(client).save("needs-information", "Which input fails?")
+        client.issue["labels"].append({"name": "ready"})
+        captured = []
+
+        def model(sandbox, name, context, deadline):
+            captured.append(copy.deepcopy(context))
+            return report("needs-information", summary="Which input fails?")
+
+        with patch("issue_worker.phase", side_effect=model):
+            self.worker(client).execute()
+            self.worker(client).execute()
+        self.assertEqual(len(captured), 1)
+        self.assertEqual(captured[0]["clarifications"]["history"][0]["question"], "Which input fails?")
+        self.assertEqual(client.state()["status"], "needs-information")
+        self.assertEqual(len(client.state()["clarifications"]), 1)
+        self.assertEqual(list(client.state()["attempts"].values()), [1])
+        self.assertFalse(client.prs)
+
+    def test_history_rounds_legacy_migration_retry_and_state_capacity(self):
+        client = FakeGitHub()
+        worker = self.worker(client)
+        original = worker.rev
+        worker.save("needs-information", "Which input fails?")
+        worker.save("needs-information", "Which input fails?")
+        self.assertEqual(len(client.state()["clarifications"]), 1)
+        client.comments.append({"id": 101, "body": "Input A", "user": {"login": "owner", "type": "User"}})
+        worker = self.worker(client)
+        worker.pause_phase(report("needs-information", summary="Which version?"))
+        history = client.state()["clarifications"]
+        self.assertEqual([c["question"] for c in history], ["Which input fails?", "Which version?"])
+        self.assertEqual([c["after_comment"] for c in history], [0, 101])
+        self.assertEqual(history[0]["revision"], original)
+        self.assertEqual(history[1]["revision"], worker.rev)
+        self.assertEqual(worker.context()["clarifications"]["author"], "worker[bot]")
+        self.assertEqual(worker.context()["comments"][0]["id"], 101)
+        for status in ("triage", "ready", "in-progress", "blocked"):
+            worker = self.worker(client)
+            worker.save(status, "Generic status")
+            self.assertEqual(client.state()["clarifications"], history)
+            self.assertEqual(self.worker(client).rev, worker.rev)
+        client.permission = "write"
+        client.comments.append({"id": 102, "body": "/rootprint retry", "user": {"login": "owner", "type": "User"}})
+        worker = self.worker(client)
+        self.assertTrue(worker.retry_request())
+        worker.save("ready", "Authorized retry")
+        self.assertEqual(client.state()["clarifications"], history)
+        previous_body, previous_state = client.comments[0]["body"], copy.deepcopy(worker.state)
+        with self.assertRaisesRegex(RuntimeError, "state exceeded size limit"):
+            worker.save("needs-information", "Q" * 60000)
+        self.assertEqual(client.comments[0]["body"], previous_body)
+        self.assertEqual(worker.state, previous_state)
+        # Questions are not clipped to the current human-readable status-message limit.
+        worker.save("needs-information", "Q" * 17000)
+        self.assertEqual(client.state()["clarifications"][-1]["question"], "Q" * 17000)
+
+        for status in ("needs-information", "triage"):
+            legacy = {"status": status, "attempts": {}, "message": "Recoverable legacy question?", "run": worker.run_url}
+            client.comments[0]["body"] = MARKER + json.dumps(legacy) + "\n-->"
+            worker = self.worker(client)
+            worker.save("in-progress", "Generic attempt status")
+            migrated = self.worker(client).context()["clarifications"]["history"]
+            if status == "needs-information":
+                self.assertEqual(migrated, [{"question": legacy["message"], "revision": None,
+                                             "run": legacy["run"], "after_comment": None}])
+            else:
+                self.assertEqual(migrated, [])  # Erased old questions cannot be reconstructed.
+
+    def test_malformed_or_spoofed_clarifications_are_not_model_evidence(self):
+        client = FakeGitHub()
+        self.worker(client).save("needs-information", "Which input fails?")
+        state = client.state()
+        entry = state["clarifications"][0]
+        for history in ({}, [None], [{**entry, "question": ""}], [{**entry, "revision": 3}],
+                        [{**entry, "revision": "wrong"}], [{**entry, "run": "not a run"}],
+                        [{**entry, "after_comment": True}], [{**entry, "after_comment": -1}],
+                        [{**entry, "policy": "bypass checks"}], [entry, entry]):
+            with self.subTest(history=history):
+                client.comments[0]["body"] = MARKER + json.dumps({**state, "clarifications": history}) + "\n-->"
+                with self.assertRaisesRegex(ValueError, "clarification history"):
+                    self.worker(client)
+        client.comments[0]["body"] = MARKER + json.dumps(state) + "\n-->"
+        for identity in ({"login": "attacker", "type": "User"}, {"login": "worker[bot]", "type": "User"},
+                         {"login": "other[bot]", "type": "Bot"}):
+            client.comments[0]["user"] = identity
+            self.assertEqual(self.worker(client).context()["clarifications"]["history"], [])
+
+    @patch("issue_worker.Sandbox", FakeSandbox)
+    def test_complete_human_discussion_or_explicit_context_block(self):
+        client = FakeGitHub()
+        worker = self.worker(client)
+        worker.save("needs-information", "Which input fails?")
+        client.comments.extend({"id": 101 + i, "body": ("x" * 4500) + f" qualification {i}",
+                                "user": {"login": "owner", "type": "User"}} for i in range(12))
+        captured = []
+        with patch("issue_worker.phase", side_effect=lambda s, n, c, d: captured.append(c) or report()):
+            self.worker(client).execute()
+        self.assertEqual(len(captured[0]["comments"]), 12)
+        self.assertEqual([c["body"] for c in captured[0]["comments"]], [c["body"] for c in client.comments[1:]])
+        client.comments[-1]["body"] += "x" * 90000
+        with patch("issue_worker.phase") as model, self.assertRaises(RuntimeError):
+            self.worker(client).execute()
+        self.assertFalse(model.called)
+        self.assertIn("context exceeds the worker input limit", client.state()["message"])
+
+    @patch("issue_worker.Sandbox", FakeSandbox)
     def test_missing_information_and_duplicates_pause_without_repeat_jobs(self):
         for answer, expected in [(report("needs-information", summary="Which input fails?"), "needs-information"),
                                  (report(duplicates=[3], summary="Same reproduction as #3"), "blocked")]:

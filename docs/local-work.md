@@ -1,5 +1,48 @@
 # Local work ledger
 
+## Latest session handoff — 2026-11-07 (clarification-context implementation)
+
+- Applying `preserve-worker-clarification-context` on separate branch
+  `fix/worker-clarification-context`, based on merged planning head `ac9c7df`.
+  Read all shared save/pause/triage/development/repair callers and bootstrap's
+  existing automated-issue-lifecycle and trust/bounds requirements.
+- Added runnable #23 lifecycle regression. Credential-free command:
+  `env -i HOME=/tmp/opencode PATH="$PWD/.venv/bin:$PATH" PYTHONPATH="$PWD/scripts" python3 -m unittest test_issue_worker.Lifecycle.test_short_answer_retains_question_across_status_saves_and_fresh_phases`.
+  Before the fix: `FAILED (failures=1)`, with `Owner reply survives, but its
+  antecedent worker question is lost`; captured triage contains the owner's
+  agreement but not the original question after a fresh worker/generic save.
+  The first diagnostic run's assertion was hidden by coordinator error handling;
+  moved the assertion outside the stub model to expose the actual missing data.
+- Implemented validated, ordered clarification history in the shared durable save
+  path, deduplicated by revision/question. Legacy needs-information text migrates
+  with unknown original revision/cursor; erased text is never invented. Candidate
+  state is checked before replacing the prior record, including in-memory history;
+  publication/recovery objects keep their existing identity across status saves.
+- Initial/resumed triage, plan/implement/complete and existing-PR repair receive the
+  same retained questions and complete human comments with IDs/authors and question
+  run/revision/cursor provenance. Removed ten-comment/4,000-character clipping;
+  the existing complete-task 90,000-character guard remains at every actual phase.
+  Trusted policy and operations docs describe untrusted history, legacy migration,
+  the 60,000-character state limit and unchanged ready/retry/manual-merge gates.
+- Credential-free focused command
+  `env -i HOME=/tmp/opencode PATH="$PWD/.venv/bin:$PATH" PYTHONPATH="$PWD/scripts" python3 -m unittest test_issue_worker test_pr_repair`
+  passes 32 tests, including multiple questions, duplicate saves, malformed/spoofed
+  history, overflow retaining prior state, long/many replies, unanswered ambiguity,
+  fresh initial/repair phases and authorization/budget/event deduplication. A test
+  insertion indentation error was corrected before this successful run.
+- Credential-free `env -i HOME=/tmp/opencode PATH="$PWD/.venv/bin:$PATH" python3 scripts/check.py`
+  passes both five-test port suites, 53 script checks, Ruff and all 11 strict changes.
+  `git diff --check` passes. Inspected the complete affected flow and diff. README
+  setup/usage/all-tests commands remain current; no workflow, permission, protocol,
+  package, dependency, vector, asset or unrelated activation requirements changed.
+- Local tasks 1.1–3.1 are complete (4/5). Task 3.2 stays open until owner publication,
+  fresh current-head CI and independent automated review, manual rebase merge and
+  a new controlled short-answer issue demonstrate the deployed fix. Do not use
+  #23's workaround as acceptance. No push, remote mutation or model call occurred.
+  Next owner command: `git push -u origin fix/worker-clarification-context`, then
+  open this fix's separate implementation PR. Keep documentation-plan implementation
+  for the next change; leave this change unarchived pending hosted acceptance.
+
 ## Latest session handoff — 2026-11-07 (PR #25 conflict refresh)
 
 - PR #25's published head is `bad80db99d6f4171b1295f683ceaf81db518719c`.

@@ -2,6 +2,7 @@
 
 import argparse
 import base64
+import copy
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -107,7 +108,8 @@ def revision(issue, comments):
 
 
 def load_state(comments, bot):
-    matches = [c for c in comments if c["user"]["login"] == bot and c["body"].startswith(MARKER)]
+    matches = [c for c in comments if c["user"]["login"] == bot and c["user"]["type"] == "Bot"
+               and c["body"].startswith(MARKER)]
     if len(matches) > 1:
         raise RuntimeError("Multiple worker state records; reconciliation needs investigation")
     if not matches:
@@ -119,7 +121,32 @@ def load_state(comments, bot):
             or any(not re.fullmatch(r"[a-f0-9]{64}", r) or type(n) is not int or not 0 <= n <= 3
                    for r, n in state["attempts"].items())):
         raise ValueError("Invalid durable worker state")
+    if "clarifications" not in state and state["status"] == "needs-information" and state.get("message"):
+        # Legacy state did not record the original revision/cursor; do not guess them.
+        state["clarifications"] = [{"question": state["message"], "revision": None,
+                                    "run": state.get("run"), "after_comment": None}]
+    validate_clarifications(state.get("clarifications", []))
     return state, comment["id"]
+
+
+def validate_clarifications(history):
+    if not isinstance(history, list):
+        raise ValueError("Invalid durable clarification history")
+    seen = set()
+    for entry in history:
+        if (not isinstance(entry, dict) or set(entry) != {"question", "revision", "run", "after_comment"}
+                or not isinstance(entry["question"], str) or not entry["question"].strip()
+                or (entry["revision"] is not None and (not isinstance(entry["revision"], str)
+                    or not re.fullmatch(r"[a-f0-9]{64}", entry["revision"])))
+                or (entry["run"] is not None and (not isinstance(entry["run"], str)
+                    or not re.fullmatch(r"https://[^\s]+/actions/runs/(?:[0-9]+|local)", entry["run"])))
+                or (entry["after_comment"] is not None
+                    and (type(entry["after_comment"]) is not int or entry["after_comment"] < 0))):
+            raise ValueError("Invalid durable clarification history")
+        key = (entry["revision"], entry["question"])
+        if key in seen:
+            raise ValueError("Duplicate durable clarification history")
+        seen.add(key)
 
 
 class Worker:
@@ -139,8 +166,18 @@ class Worker:
     def save(self, status, message):
         if status not in STATES:
             raise ValueError("Unknown issue state")
-        self.state.update(status=status, message=message[:16000], run=self.run_url)
-        body = MARKER + json.dumps(self.state, sort_keys=True) + "\n-->\n" + message[:16000]
+        candidate = dict(self.state)
+        if "clarifications" in candidate:
+            candidate["clarifications"] = copy.deepcopy(candidate["clarifications"])
+        if status == "needs-information":
+            history = candidate.setdefault("clarifications", [])
+            if not any(c["revision"] == self.rev and c["question"] == message for c in history):
+                history.append({"question": message, "revision": self.rev, "run": self.run_url,
+                                "after_comment": max((c["id"] for c in self.comments
+                                                      if c["user"]["type"] != "Bot"), default=0)})
+        validate_clarifications(candidate.get("clarifications", []))
+        candidate.update(status=status, message=message[:16000], run=self.run_url)
+        body = MARKER + json.dumps(candidate, sort_keys=True) + "\n-->\n" + message[:16000]
         body += f"\n\nState: **{status}** · [worker run]({self.run_url})"
         if len(body) > 60000:
             raise RuntimeError("Durable issue state exceeded size limit")
@@ -148,6 +185,7 @@ class Worker:
             self.client.api("PATCH", f"/issues/comments/{self.comment_id}", {"body": body})
         else:
             self.comment_id = self.client.api("POST", self.path + "/comments", {"body": body})["id"]
+        self.state = candidate
         # Only touch lifecycle labels, preserving labels applied by the owner.
         for label in STATES:
             if label == status:
@@ -159,6 +197,15 @@ class Worker:
                     if error.status != 404:
                         raise
 
+    def clarification_context(self):
+        validate_clarifications(self.state.get("clarifications", []))
+        return {
+            "comments": [{"id": c["id"], "author": c["user"]["login"], "body": c["body"]}
+                         for c in self.comments if c["user"]["type"] != "Bot"],
+            "clarifications": {"author": self.bot, "state_comment": self.comment_id,
+                               "history": copy.deepcopy(self.state.get("clarifications", []))},
+        }
+
     def context(self):
         words = set(re.findall(r"\w+", self.issue["title"].lower()))
         issues = [i for i in self.client.pages("/issues?state=all&sort=updated&direction=desc")
@@ -166,8 +213,7 @@ class Worker:
         issues.sort(key=lambda i: len(words & set(re.findall(r"\w+", i["title"].lower()))), reverse=True)
         return {
             "issue": {"number": self.number, "title": self.issue["title"], "body": self.issue.get("body")},
-            "comments": [{"author": c["user"]["login"], "body": c["body"][:4000]}
-                         for c in self.comments if c["user"]["type"] != "Bot"][-10:],
+            **self.clarification_context(),
             "possibleDuplicates": [{"number": i["number"], "title": i["title"], "body": (i.get("body") or "")[:1000]}
                                    for i in issues[:10]],
         }
@@ -325,6 +371,7 @@ class Worker:
         from independent_review import metadata
 
         context = {"issue": {"number": self.number, "title": self.issue["title"], "body": self.issue.get("body")},
+                   **self.clarification_context(),
                    "repair": evidence, "discussion": metadata(self.reader, self.reader, pr["number"])}
         repair_fingerprint(context)  # Check the COMPLETE task, not just individual diagnostics.
         seed = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()

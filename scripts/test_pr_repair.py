@@ -135,6 +135,37 @@ class RepairSandbox(FakeSandbox):
 
 
 class RepairFlow(unittest.TestCase):
+    @patch("issue_worker.Sandbox", RepairSandbox)
+    def test_repair_clarification_survives_restart_and_reaches_every_phase(self):
+        repo = Repository()
+        worker = repo.initialize()
+        question = "Should repair preserve ValueError for invalid input?"
+        worker.pause_phase(report("needs-information", summary=question))
+        repo.comments.append({"id": 101, "body": "Agreed. Please proceed as you suggest.",
+                              "user": {"login": "owner", "type": "User"}})
+        worker = repo.worker()
+        worker.save("triage", "Generic status before repair")
+        repo.issue["labels"].append({"name": "ready"})
+        repo.review_failure()
+        captured = []
+
+        def model(sandbox, name, context, deadline):
+            captured.append(copy.deepcopy(context))
+            return report("complete" if name in ("implement", "complete") else "ready")
+
+        with patch("issue_worker.phase", side_effect=model):
+            repo.worker().execute()
+            repo.worker().execute()
+        self.assertEqual(len(captured), 4)
+        for context in captured:
+            self.assertEqual(context["clarifications"]["history"][0]["question"], question)
+            self.assertEqual(context["clarifications"]["state_comment"], 100)
+            self.assertEqual(context["comments"], [{"id": 101, "author": "owner",
+                                                   "body": "Agreed. Please proceed as you suggest."}])
+        self.assertEqual(len(repo.created), 1)
+        self.assertEqual(repo.state()["attempts"][worker.rev], 1)
+        self.assertFalse(any("/merge" in path for _, path, _ in repo.calls))
+
     def test_each_actual_phase_bounds_final_serialized_context_after_report_growth(self):
         def run(args, **kwargs):
             Path(kwargs["cwd"], "phase-result.json").write_text(json.dumps(report()), encoding="utf-8")
