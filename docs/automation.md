@@ -4,31 +4,33 @@
 
 Run `python scripts/activation.py` for a machine-readable report. It checks the
 local origin configuration without printing the remote URL (which could contain
-credentials). `--require-active` exits nonzero while autonomy is inactive.
+credentials). `recordedHostedEvidence` identifies dated observations for
+`moquist/rootprint`: the hosted CI matrix, reviewer App approval, manual issue
+lifecycle and merge rules. These remain historical evidence even in a checkout
+without an origin, or with a different origin. `liveRemoteChecksPerformed` is
+`false`: the command makes no GitHub/provider request and does not read credentials.
+`--require-active` exits nonzero while autonomous maintenance is unverified.
 
-Prepared locally: spec-driven agent instructions, shared verification, a
-read-only CI matrix, issue forms, weekly Dependabot configuration, and an
-[issue worker](issue-worker.md) with isolated OpenCode execution, and a tool-free
-[independent reviewer](independent-review.md). **No
-unattended issue worker, independent PR reviewer, auto-merger, release bot, or
-publisher is verified as running.** The worker is disabled by default and needs
-controlled hosted verification. The reviewer is also disabled by default and
-awaits App/OpenAI/check-enforcement acceptance. Merge and release integrations
-still need implementation and live verification. The owner reports that CI passed
-after pushing the worker; that does not activate autonomous maintenance.
+Hosted evidence as of 2026-11-07 confirms cross-platform CI, separate-App
+[independent review](independent-review.md), no-bypass App-bound merge gates and
+the [issue worker](issue-worker.md)'s documentation issue-to-PR-to-manual-merge
+path. See [the ledger](local-work.md) for exact heads, check IDs, runs and limits
+of that evidence. Remaining acceptance includes hostile input, repeated events,
+exhausted attempts/recovery, failure deduplication and a failing bug regression.
+Automatic merging and release integrations still need implementation and
+verification; the last inspected repository settings had auto-merge disabled.
 
 ## What local operation gives up
 
-AI can implement and verify changes during interactive sessions. It is not
-listening for reports or repairing failures while no agent session is running.
+AI can implement and verify changes during interactive sessions. A local session
+does not run an unattended daemon; deployed GitHub workflows operate separately.
 During interactive local work, the owner performs every push. Agents prepare
 verified local commits and owner-run commands; they must not push or request
 push credentials. GitHub-settings authorization does not authorize pushing.
-`docs/local-work.md` substitutes for an issue ledger until GitHub is available.
-The owner has now pushed and reports successful hosted CI. Recorded local test
-results remain separate from that owner report. GitHub event delivery, hosted
-worker/reviewer isolation, App permissions, and merge enforcement still need a
-controlled acceptance run with recorded links.
+`docs/local-work.md` preserves local handoffs and hosted acceptance evidence;
+GitHub issues and App-authored state comments track deployed worker outcomes.
+Recorded local results and historical hosted observations do not establish
+current service health or completion of the remaining bootstrap scenarios.
 
 These are activation gaps, not permission to weaken the specified gates.
 

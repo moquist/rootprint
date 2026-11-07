@@ -160,19 +160,19 @@ setup and verified release automation.
 
 OpenSpec defines behavior; AI agents author implementation and maintenance.
 Read [AGENTS.md](AGENTS.md). Locally, agent work is interactive and checks run on
-this host. GitHub issue events, hosted multi-OS checks, independent PR review,
-automatic merging, and publishing are **not active** until remote setup is
-completed. Local development does not weaken those intended merge gates, but
-cannot demonstrate them or provide unattended GitHub maintenance.
+this host. Hosted cross-platform CI, separate-App independent review and
+no-bypass merge gates have recorded acceptance evidence. The issue worker has
+completed a documentation issue-to-PR-to-manual-merge run; broader worker
+acceptance, automatic merging and publishing remain incomplete.
 
 Run `python scripts/activation.py` for outstanding requirements. The
 [issue worker](docs/issue-worker.md) is implemented for owner-selected issues and
 manual merging, with OpenAI GPT-6.1 Sol and isolated code execution. Its workflow
-is disabled by default and still needs controlled hosted verification. The
-[independent reviewer](docs/independent-review.md) is implemented with a separate
-App and tool-free model requests; it also remains disabled until owner activation
-and controlled hosted verification. Automatic merging and releases remain
-separate integrations. See
+is disabled by default for new deployments. The [independent reviewer](docs/independent-review.md)
+is implemented with a separate
+App and tool-free model requests. The activation report links dated hosted
+evidence and remaining requirements; it does not probe live service health.
+Automatic merging and releases remain separate integrations. See
 [automation activation](docs/automation.md).
 
 ## License

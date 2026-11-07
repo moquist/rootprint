@@ -1,7 +1,7 @@
-"""Report verified local facts and remaining remote activation requirements.
+"""Report local facts, recorded hosted evidence, and remaining activation work.
 
-This is deliberately not a self-attestation flag: credentials in the environment
-do not prove a GitHub ruleset, worker isolation, or a successful issue-to-merge run.
+Recorded evidence is historical and repository-specific, not a live health probe.
+Credentials in the environment do not establish autonomous maintenance readiness.
 """
 
 import argparse
@@ -18,13 +18,12 @@ def status():
     has_remote = remote.returncode == 0 and bool(remote.stdout.strip())
     blockers = []
     if not has_remote:
-        blockers.append("No origin remote: GitHub event-driven automation and hosted checks are unavailable")
+        blockers.append("No origin remote configured for this checkout")
     blockers.extend([
-        "Initial hosted CI success is owner-reported; recorded latest-revision matrix/run evidence remains pending",
-        "Scoped GitHub App installation and OpenAI provider access have not been live-verified",
-        "Issue worker is implemented and disabled by default; hosted isolation and issue-to-PR acceptance are unverified",
-        "Independent reviewer is implemented and disabled by default; hosted App attribution and no-bypass merge gates are unverified",
-        "Controlled issue-to-PR-to-review-to-merge acceptance run is pending",
+        "Current GitHub settings, App installations, provider access and runner isolation are not live-probed by this report",
+        "Hosted adversarial input, repeated events, exhausted attempts/recovery and failure deduplication acceptance remains incomplete",
+        "Controlled bug-to-failing-regression-to-fix acceptance remains pending; issue #12 exercised a documentation change",
+        "Automatic rebase merging is not implemented or verified; last inspected repository setting had auto-merge disabled",
         "Automatic version PRs and verified publishing integration are not implemented or verified",
         "Registry ownership and publishing identity are not verified",
     ])
@@ -35,6 +34,17 @@ def status():
         "githubMaintenanceActive": False,
         "publishingActive": False,
         "originConfigured": has_remote,
+        "liveRemoteChecksPerformed": False,
+        # Historical observations from docs/local-work.md, independent of this checkout's origin.
+        "recordedHostedEvidence": {
+            "repository": "moquist/rootprint",
+            "asOf": "2026-11-07",
+            "ledger": "docs/local-work.md",
+            "ci": "https://github.com/moquist/rootprint/actions/runs/42332002332",
+            "independentReview": "https://github.com/moquist/rootprint/actions/runs/42332000613",
+            "manualIssueLifecycle": "https://github.com/moquist/rootprint/issues/12#issuecomment-6688011714",
+            "mergeRules": "https://github.com/moquist/rootprint/rules/26673301",
+        },
         "prepared": ["OpenSpec contract", "local verification", "read-only CI workflow", "issue forms",
                      "dependency update configuration", "isolated OpenCode issue worker (manual merges)",
                      "tool-free current-head independent reviewer"],
