@@ -8,9 +8,12 @@ pass. Enable automatic merging later, when you are comfortable with the flow.
 This is a staged rollout toward the specified fully automated workflow.
 
 The repository contains CI, issue forms, and an issue worker that is disabled by
-default and still needs controlled hosted verification. The independent reviewer
-is also implemented and disabled by default; its App attribution and merge gates
-need live verification. Automatic merging remains a later integration.
+default for new deployments. Recorded hosted evidence for `moquist/rootprint`
+includes the CI matrix, independent reviewer App attribution and merge gates, and
+a documentation issue-to-manual-merge run. See `docs/local-work.md` for evidence
+and remaining worker acceptance. This guide describes setup for a deployment;
+`python scripts/activation.py` reports historical evidence, not live health.
+Automatic merging remains a later integration.
 
 ## Rollout stages
 

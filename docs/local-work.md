@@ -1,5 +1,37 @@
 # Local work ledger
 
+## Latest session handoff — 2026-11-07 (activation report correction)
+
+- Fixed the obsolete activation report under bootstrap's existing accurate setup
+  status requirement; no new behavior contract or activation authorization was
+  needed. `scripts/activation.py` now separates dated, repository-specific
+  `recordedHostedEvidence` from remaining blockers and explicitly reports
+  `liveRemoteChecksPerformed=false`. Evidence links cover CI, reviewer approval,
+  merge rules and issue #12's manual lifecycle. They remain historical even if
+  this checkout has no origin or points elsewhere. Origin URLs and credentials
+  are not exposed; no GitHub/provider request is made.
+- `githubMaintenanceActive` and `publishingActive` remain false, and
+  `--require-active` still exits 1. Remaining requirements name hostile-input,
+  repeated-event, retry/recovery and failure-deduplication acceptance, controlled
+  bug/regression work, auto-merge, and release/registry setup. Recorded evidence
+  does not assert current settings, permissions, provider access or runner health.
+- Added a runnable regression in `scripts/test_activation.py`; before the fix,
+  credential-free activation tests failed with missing `liveRemoteChecksPerformed`.
+  After the fix all three pass, covering historical evidence with/without origin,
+  only a local Git lookup, secret-URL redaction and fail-closed `--require-active`
+  even with synthetic provider/write environment values. Updated README,
+  automation/setup and verification guidance that repeated obsolete claims.
+- Bootstrap task 6.3 stays open: this corrects reporting but does not implement a
+  live audit of every installation, permission and missing-configuration case.
+  Bootstrap remains 17/27; the next acceptance work is still controlled worker
+  bug/regression and adversarial/recovery scenarios. No remote activation, push,
+  merge or publication is authorized by this fix.
+- Verification passed with an empty credential environment: focused activation
+  tests (3), `python3 scripts/check.py` (both five-test port suites, 32 script
+  checks, Ruff and eight strict changes), and `git diff --check`. The actual JSON
+  command emitted the dated evidence and remaining blockers with both active
+  flags false. README usage/setup/all-tests commands are unchanged.
+
 ## Latest session handoff — 2026-11-07 (bootstrap hosted evidence reconciliation)
 
 - Owner rebase-merged PR https://github.com/moquist/rootprint/pull/14 at

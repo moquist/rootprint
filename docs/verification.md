@@ -20,8 +20,9 @@ python scripts/clean_check.py --mutations
 
 Use Python 3.11+ and Node.js 22+. Shared vectors, fixed-clock records, malformed
 input rejection, custom providers, and packaged CLIs form the acceptance suite.
-Hosted Windows/macOS verification and named remote merge gates remain pending
-until GitHub activation; passing local Linux checks does not prove those runs.
+Hosted Windows/macOS verification and named remote merge gates have recorded
+acceptance evidence in [the ledger](local-work.md); local Linux checks remain
+separate from those hosted observations.
 
 `package_check.py` builds and installs both distributions into temporary
 environments, then exercises CLI trust boundaries and documented API examples.
@@ -31,11 +32,12 @@ checks without local dependencies or Git metadata, then confirms that changes to
 canonical bytes, array order, and label shortening fail the expected tests in a
 disposable copy; it never mutates the working source.
 
-The prepared GitHub workflow runs both language suites and integration checks on
+The GitHub workflow runs both language suites and integration checks on
 Ubuntu, macOS, and Windows with Node 22/Python 3.11, plus Ubuntu Node 24/Python
-3.14. Required aggregate status: `ci`. The owner reports that hosted CI passed
-after pushing the worker implementation; that report is recorded in the ledger,
-without claiming independently inspected run URLs here. The implemented
+3.14. Required aggregate status: `ci`. All four jobs passed on PR #14's published
+head; the ledger records the exact SHA and run. The
 [independent reviewer](independent-review.md) publishes `independent-review`
-through its own App after activation. Local checks cover review decisions and
-SHA freshness; hosted App attribution and merge enforcement remain unverified.
+through its own App. Local checks cover review decisions and SHA freshness;
+hosted evidence also records App attribution, new-head invalidation and failure
+blocking. `python scripts/activation.py` links those historical observations and
+reports remaining work without claiming current remote health or full autonomy.
