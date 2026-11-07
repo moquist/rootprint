@@ -44,6 +44,15 @@
   outcome must be evidenced. Bootstrap remains 17/27 and changes stay unarchived.
   Agents do not push or enable auto-merge. Documentation and activation output
   explicitly describe repair as local implementation pending hosted acceptance.
+- Verified implementation commit: `194ef79` on `feat/worker-pr-repair`. Deployed
+  reviewer/hosted-entrypoint source replay accepts it at 912,106 text bytes with
+  287,894 bytes remaining, using merged planning PR #21's full discussion as proxy
+  plus 8,192 bytes extra allowance. Command:
+  `python3 /tmp/opencode/replay_review_refresh.py 21 HEAD`. This is immutable-source
+  sizing, not independent model approval or the new PR's actual discussion.
+  Owner next pushes this branch and opens its implementation PR to main; require
+  fresh exact-head `ci` and `independent-review`, then manual rebase merge before
+  hosted repair acceptance. Final evidence commit is sized separately.
 
 ## Latest session handoff — 2026-11-07 (repair planning PR prepared)
 
