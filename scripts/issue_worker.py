@@ -184,6 +184,9 @@ class Worker:
         actions = {
             "active": f"Wait; no new readiness action is needed while work runs. Follow the [worker run]({self.run_url}).",
             "answer": "Answer the focused question above in this issue. The reply is re-triaged; add `ready` once scope is confirmed. Lifecycle-label cleanup is automatic.",
+            "duplicate": ("Review the existing issues linked above. If confirmed as duplicate or already fulfilled, close this report referencing that work. "
+                          "Otherwise explain the material difference here for re-triage; do not retry unchanged work."
+                          + (f" Resolve {pr}'s disposition as well before resuming." if self.state.get("pr") else "")),
             "authorize": "Add the `ready` label to authorize an attempt. The worker consumes it and cleans up other lifecycle labels automatically.",
             "exhausted": f"No attempts remain. Supply material new information and renewed `ready`, or explicitly request a fresh budget. {retry} Relabeling or reopening alone cannot reset it.",
             "worker-fix": f"Request a worker planning/scope fix and follow the [run diagnostics]({self.run_url}) before retrying. Do not supply internal contract paths or retry an unchanged defective plan.",
@@ -450,9 +453,13 @@ class Worker:
 
     def pause_phase(self, result):
         status = "needs-information" if result["status"] == "needs-information" else "blocked"
+        duplicates = result["duplicates"]
+        message = result["summary"]
+        if duplicates:
+            message += "\n\nLikely duplicates: " + ", ".join(f"#{n}" for n in duplicates)
         if self.state.get("repair"):
             self.state["repair"]["stage"] = status
-        self.save(status, result["summary"])
+        self.save(status, message, "duplicate" if duplicates and status == "blocked" else None)
 
     def repair_pr(self, pr, evidence, key):
         if not self.reserve_repair(key, pr):
@@ -614,10 +621,8 @@ class Worker:
             with Sandbox(self.runtime) as sandbox:
                 triage = phase(sandbox, "triage", context, self.deadline)
                 self.state["triage_revision"] = self.rev
-                duplicates = "\n\nLikely duplicates: " + ", ".join(f"#{n}" for n in triage["duplicates"]) if triage["duplicates"] else ""
                 if triage["status"] != "ready" or triage["duplicates"]:
-                    status = "needs-information" if triage["status"] == "needs-information" else "blocked"
-                    self.save(status, triage["summary"] + duplicates)
+                    self.pause_phase(triage)
                     return
                 if not ready:
                     self.save("triage", triage["summary"], "authorize")

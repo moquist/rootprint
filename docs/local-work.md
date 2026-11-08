@@ -1,5 +1,54 @@
 # Local work ledger
 
+## Latest session handoff — 2026-11-08 (blocked-prompt acceptance found a defect)
+
+- Verified #29's post-merge reconciliation: successful run
+  https://github.com/moquist/rootprint/actions/runs/42442032752 now records durable
+  `status=done`, `next_step=done`, the `done` label and “No further implementation
+  action is required” linked to merged PR #30. This supersedes the earlier pending
+  done observation below; no owner action was needed for that reconciliation.
+- Owner requested the next acceptance step. Created controlled issue
+  https://github.com/moquist/rootprint/issues/31 with no ready label, duplicating
+  the already-fulfilled #29/#30 README sentence. The sole hosted triage run
+  https://github.com/moquist/rootprint/actions/runs/42443836836 succeeded and
+  correctly blocked the duplicate with `attempts={}` and no implementation PR.
+- Hosted acceptance failed at the trusted procedural footer: the App's summary
+  correctly says close the duplicate, but `next_step=investigate` recommends add
+  ready and `/rootprint retry`. Evidence:
+  https://github.com/moquist/rootprint/issues/31#issuecomment-6716851011.
+  Do not follow that contradictory footer. Leave the issue without ready; no
+  exhausted budget, provider failure or additional implementation is involved.
+- This violates the existing worker-issue-guidance actionable-state/reason-specific
+  blocked guidance requirements; no new behavior requirement is needed. Inspected
+  all shared pause callers and the initial triage path. Permanent credential-free
+  regression before the fix:
+  `env -i HOME=/tmp/opencode PATH="$PWD/.venv/bin:$PATH" PYTHONPATH="$PWD/scripts" python3 -m unittest test_issue_worker.Lifecycle.test_duplicate_disposition_does_not_recommend_ready_or_budget_reset`
+  failed with `Duplicate disposition must not authorize another attempt` because
+  the footer contained `add ready`. The shared cause was duplicate reports being
+  routed to generic unknown-failure guidance.
+- Prepared `fix/worker-duplicate-guidance` on acceptance bookkeeping `3c4743c`.
+  Initial triage now shares the existing pause path with downstream/repair phases;
+  duplicate IDs get a trusted duplicate-disposition action and existing-work links,
+  without readiness/reset instructions. Unanswered questions retain answer guidance,
+  and linked repair PR disposition remains explicit. Credential-free focused
+  `python3 -m unittest test_issue_worker test_pr_repair` (same cleared environment
+  and PYTHONPATH as above) passes 43 checks, including initial/repeated triage,
+  repair pause and needs-information priority with a duplicate candidate.
+- Credential-free `env -i HOME=/tmp/opencode PATH="$PWD/.venv/bin:$PATH" python3 scripts/check.py`
+  passes both five-test port suites, 67 script checks, Ruff and all 10 active strict
+  changes. Whitespace/full affected-flow/diff checks pass. README setup/usage/all-tests
+  commands, protocol/package/vector/dependency/permission and sandbox boundaries
+  are unchanged. The worker guide now includes duplicate-disposition guidance.
+  Documentation hosted task 4.2 stays open until corrected blocked guidance is
+  deployed and observed; the flawed live prompt is not accepted as passing evidence.
+- Owner next publishes `fix/worker-duplicate-guidance` (`git push -u origin HEAD`)
+  as a PR to main. This branch includes the prior verified acceptance/archive commit
+  `3c4743c`, plus this regression fix. Require fresh exact-head CI/independent review
+  and manual rebase merge. After deployment, update #31's acceptance instructions
+  with the deployed-fix context to trigger fresh triage, without ready or a budget
+  reset; inspect the corrected prompt before closing the duplicate acceptance issue.
+  Do not rerun unchanged failing code or claim hosted success before that evidence.
+
 ## Hosted acceptance — 2026-11-08 (issue #29 / PR #30)
 
 - Owner confirmed the controlled test worked. Independently inspected fresh issue
