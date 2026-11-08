@@ -1,5 +1,30 @@
 # Local work ledger
 
+## Completion handoff — 2026-11-08 (issue #29)
+
+- Documentation-only completion under
+  `openspec/changes/bootstrap-rootprint-ecosystem/specs/automated-maintenance/spec.md`.
+  README.md adds the confirmed sentence: “`calculatedAt` is descriptive metadata
+  and does not affect deterministic content identity.” It is a standalone
+  paragraph after the UTC label example and before “Setup and run all tests”.
+  moquist's comment #6716465117 confirmed the retained wording/placement question;
+  no further clarification was needed.
+- Inspected the full README diff and hash-record contract plus both ports' record
+  construction. Acceptance passed: exact sentence once, exact placement, regular
+  non-executable README, and removing only the inserted paragraph reproduces
+  HEAD's README bytes. All usage examples and test commands remain unchanged;
+  no runtime, protocol, vector or normative specification changes were made.
+- Completion reran `python3 scripts/check.py`: both five-test port suites,
+  66 script tests, Ruff, and all 11 strict OpenSpec changes passed.
+  `python3 scripts/package_check.py` passed both installed CLI/API and package
+  checks. `git diff --check` passed after this ledger update. The only changed
+  files are README.md and this completion ledger; no task checkboxes or archive
+  state were changed, and unrelated bootstrap/hosted acceptance remains open.
+- Local verification is complete, not a claim of deployment or issue closure.
+  Fresh CI and independent automated review on the latest PR revision remain
+  required, followed by owner merge. No remote activation, publication, commit,
+  push or merge was performed in this sandbox.
+
 ## Latest session handoff — 2026-11-08 (documentation implementation refresh)
 
 - Owner merged diagnostic PR #27 as `544a27f`; fetched `origin/main` points there.

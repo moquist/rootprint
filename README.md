@@ -16,6 +16,8 @@ The name combines **root**, a Merkle tree's root hash (SHA-256 by default), with
 - Full content identity is `(protocol, algorithm, digest)`. UTC labels aid recognition:
   `20261102_090405-sha256-v1-d331f806a7ada530`.
 
+`calculatedAt` is descriptive metadata and does not affect deterministic content identity.
+
 ## Setup and run all tests
 
 From the repository root, with Node.js 22+, Python 3.11+, and OpenSSL on `PATH`,
