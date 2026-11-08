@@ -1,5 +1,33 @@
 # Local work ledger
 
+## Latest session handoff — 2026-11-08 (documentation implementation refresh)
+
+- Owner merged diagnostic PR #27 as `544a27f`; fetched `origin/main` points there.
+  Prepared `work/worker-documentation-plans-implementation-refreshed` from that
+  base and replayed implementation `477d9e2`. The original local implementation
+  branch remains preserved. Only the work ledger conflicted; retained both full
+  diagnostic and documentation handoffs below without dropping evidence.
+- All eight non-ledger implementation/artifact files are byte-identical to
+  `477d9e2`. The already-merged clarification fix and provider diagnostics remain
+  intact. The new PR contains only documentation intake/guidance implementation
+  and this refresh evidence, rather than republishing either merged fix.
+- Credential-free `env -i HOME=/tmp/opencode PATH="$PWD/.venv/bin:$PATH" python3 scripts/check.py`
+  passed both five-test port suites, 66 script checks, Ruff and all 11 strict
+  changes. The same environment's `python3 scripts/package_check.py` passed both
+  installed CLI/API/package checks. Whitespace checks pass. Existing real sandbox/
+  OpenCode verification for the byte-identical implementation is recorded below;
+  this refresh did not repeat or claim a new runtime/model/provider acceptance run.
+- OpenSpec remains 6/7 complete: hosted documentation/prompt acceptance stays open.
+  Clarification's controlled acceptance and unrelated activation tasks also remain
+  open. Primary README commands and package/protocol/dependency/workflow permissions
+  are unchanged. No remote mutation, push, model request or merge occurred here.
+- Next owner command from this branch: `git push -u origin HEAD`, then open a PR
+  to `main` titled `feat: support worker documentation plans and issue guidance`.
+  Require fresh exact-head CI and independent review, then owner manual rebase merge.
+  After deployment, exercise a fresh small documentation issue and a short-answer
+  clarification, inspect Next step prompts and linked PR/check/manual-merge outcomes,
+  and record actual issue/run/PR evidence before marking hosted tasks complete.
+
 ## Latest session handoff — 2026-11-08 (review-provider diagnostics)
 
 - PR #26's head `631d68d` passed all current-head CI jobs. Its original reviewer
@@ -54,6 +82,65 @@
   activate only after deployment; original runs retain their old output. #26 is
   merged, but its separate controlled clarification acceptance task remains open;
   no unrelated bootstrap/repair acceptance or activation requirement was completed.
+
+## Latest session handoff — 2026-11-07 (documentation route implementation)
+
+- Applying `support-worker-documentation-plans` on separate stacked branch
+  `feat/worker-documentation-plans`, based on clarification fix `d4e056d`. Publish/
+  merge the clarification PR first so this implementation's PR contains only its
+  own changes. Both deployed acceptance tasks remain open until evidenced.
+- Permanent initial documentation regression fails before routing changes:
+  `env -i HOME=/tmp/opencode PATH="$PWD/.venv/bin:$PATH" PYTHONPATH="$PWD/scripts" python3 -m unittest test_issue_worker.Lifecycle.test_initial_documentation_maintenance_reaches_linked_pr`
+  reports `Maintenance classification is restricted to non-code repair acceptance`
+  despite an existing bootstrap maintenance contract and runnable acceptance.
+  #23's observed `Plan must reference an OpenSpec contract` remains diagnosed
+  evidence only: its exact unavailable model report is not inferred.
+- Implemented initial/repair documentation maintenance in the shared development
+  path. The coordinator supplies the main/bootstrap process contract; invalid or
+  missing references/acceptance/classification remain worker-plan failures. Prose
+  work uses runnable post-edit acceptance, separate phases and normal integrated/
+  package checks, without fabricated requirement deltas or failing-before code tests.
+- A shared final exported-diff guard checks both publication routes after completion.
+  Its corpus is root/setup/package READMEs and docs Markdown/text/reStructuredText,
+  regular non-executable files only. Tests cover allowed prose plus rejected late
+  source/tests/configuration/workflow/policy/agent/spec and executable-mode edits.
+  Existing bug regression and feature-artifact validation remain enforced.
+- Every state save renders a trusted, bounded Next step separately from task text/
+  clarification history. Callers select actual stage/reason; typed worker-plan/report
+  and provider/runtime failures distinguish fixing the worker from resolving setup.
+  Prompts cover ready, questions, remaining/exhausted budgets, active work, checks,
+  repair, review retry dispatch, manual rebase merge, closed PR and done. Unknown
+  failures request investigation. No model field chooses actions or grants authority.
+- Durable snapshots suppress identical saves across fresh runs without losing later
+  budget/recovery updates. Guidance counts against state capacity; failed comment
+  access/publication does not claim a delivered prompt. Tests preserve clarification
+  provenance and unchanged revision/authorization/retry/merge boundaries. Worker and
+  setup guides include the documentation scope, examples and lifecycle action table.
+- Final credential-free focused command
+  `env -i HOME=/tmp/opencode PATH="$PWD/.venv/bin:$PATH" PYTHONPATH="$PWD/scripts" python3 -m unittest test_issue_worker test_pr_repair`
+  passes 42 tests. `env -i HOME=/tmp/opencode PATH="$PWD/.venv/bin:$PATH" python3 scripts/check.py`
+  passes both five-test port suites, 63 script checks, Ruff and all 11 strict changes.
+  Initial integrated verification found Ruff E731 in a test helper; replaced its
+  assigned lambda with a function. Final review added explicit exhausted-budget
+  wording on the third failure; focused/integrated/runtime checks were repeated
+  after that change and pass. Whitespace checks pass.
+- Credential-free `python3 scripts/package_check.py` passed installed TypeScript/
+  Python CLI/API and distribution checks. Rebuilt the real rootless Podman image,
+  then `python3 scripts/worker_runtime_check.py --runtime podman` passed isolation,
+  hostile artifacts, exact-head import/deletions/modes/export/mismatch checks, real
+  pinned OpenCode/MCP startup and offline integrated/package checks (Node 22/Python
+  3.11). Both commands used `env -i HOME="$HOME" PATH="$PWD/.venv/bin:$PATH" XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"`;
+  image preparation preceded offline execution. No provider/GitHub credential or
+  live model request was used. Full affected flows/diff reviewed; primary README
+  usage/setup/all-tests examples, package/protocol/vector/dependency/permission and
+  unrelated activation requirements remain current and unchanged.
+- Local tasks 1.1–4.1 are complete (6/7); hosted task 4.2 remains open. Owner first
+  publishes clarification branch `fix/worker-clarification-context` through fresh
+  current-head CI and independent review and manual rebase merge, then publishes
+  `feat/worker-documentation-plans` as its own implementation PR. After that merge,
+  controlled documentation/clarification issues must evidence deployed prompts and
+  linked PRs. #23 was not changed. No agent push, remote mutation, merge or activation
+  occurred. Both changes stay unarchived pending their real hosted acceptance.
 
 ## Latest session handoff — 2026-11-07 (clarification-context implementation)
 

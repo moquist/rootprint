@@ -17,7 +17,7 @@ from urllib.error import HTTPError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
-from worker_agent import phase
+from worker_agent import PhaseError, WorkerPlanError, phase
 from worker_sandbox import ROOT, Sandbox, safe_path, validate_changes
 from worker_repair import checks as repair_checks, fingerprint as repair_fingerprint, overlay
 
@@ -31,6 +31,17 @@ class ApiError(RuntimeError):
     def __init__(self, status):
         super().__init__(f"GitHub API request failed (HTTP {status})")
         self.status = status
+
+
+def maintenance_changes(changes):
+    for change in validate_changes(changes):
+        path = change["path"]
+        allowed = path in ("README.md", "github-automation-setup-instructions.md",
+                           "packages/python/README.md", "packages/typescript/README.md") or (
+                               path.startswith("docs/") and path.endswith((".md", ".txt", ".rst")))
+        if (not allowed or change["mode"] != "100644"
+                or "AGENTS.md" in path.split("/") or ".opencode" in path.split("/")):
+            raise WorkerPlanError("Documentation maintenance changed source, configuration, policy, requirements or executable mode; use the bug/feature route")
 
 
 class GitHub:
@@ -158,14 +169,64 @@ class Worker:
         self.issue = client.api("GET", self.path)
         self.comments = list(client.pages(self.path + "/comments"))
         self.state, self.comment_id = load_state(self.comments, bot)
+        self.persisted_state = copy.deepcopy(self.state)
         self.rev = revision(self.issue, self.comments)
         self.state.setdefault("attempts", {})
         self.run_url = os.environ.get("GITHUB_SERVER_URL", "https://github.com") + "/" + client.repo + "/actions/runs/" + os.environ.get("GITHUB_RUN_ID", "local")
         self.deadline = time.monotonic() + 22 * 60
 
-    def save(self, status, message):
+    def next_step(self, action):
+        repo = "https://github.com/" + self.client.repo
+        workflow = repo + "/actions/workflows/issue-worker.yml"
+        pr = f"[PR #{self.state['pr']}]({repo}/pull/{self.state['pr']})" if self.state.get("pr") else "the linked PR"
+        remaining = max(0, 3 - self.state["attempts"].get(self.rev, 0))
+        retry = "An account with repository write, maintain or admin permission may use `/rootprint retry` to explicitly reset the budget."
+        actions = {
+            "active": f"Wait; no new readiness action is needed while work runs. Follow the [worker run]({self.run_url}).",
+            "answer": "Answer the focused question above in this issue. The reply is re-triaged; add `ready` once scope is confirmed. Lifecycle-label cleanup is automatic.",
+            "authorize": "Add the `ready` label to authorize an attempt. The worker consumes it and cleans up other lifecycle labels automatically.",
+            "exhausted": f"No attempts remain. Supply material new information and renewed `ready`, or explicitly request a fresh budget. {retry} Relabeling or reopening alone cannot reset it.",
+            "worker-fix": f"Request a worker planning/scope fix and follow the [run diagnostics]({self.run_url}) before retrying. Do not supply internal contract paths or retry an unchanged defective plan.",
+            "investigate": f"Investigate the [run diagnostics]({self.run_url}) and resolve the reported cause before resuming. An unchanged retry is not a remedy for an unknown worker failure.",
+            "operational": f"Resolve the reported provider, permission, dependency, runner or check prerequisite first; follow the [run diagnostics]({self.run_url}).",
+            "checks": f"Wait for current-head `ci` and `independent-review` on {pr}; both must pass before owner merging.",
+            "repair": f"Wait for bounded repair on {pr}; follow the [worker run]({self.run_url}). Fresh `ci` and `independent-review` are required afterward.",
+            "merge": f"Review {pr} and use **Rebase and merge** after current-head `ci` and `independent-review` pass. No new `ready` label is needed.",
+            "closed": f"Resolve {pr}'s disposition, for example reopen it if work should continue. A retry does not create a replacement PR.",
+            "done": f"{pr} was merged. No further implementation action is required for this work.",
+        }
+        if action not in actions:
+            raise ValueError("Unknown trusted next-step action")
+        text = actions[action]
+        if action == "worker-fix":
+            if not remaining:
+                text += " After deploying the worker fix: " + actions["exhausted"]
+            elif self.state.get("pr") or self.state.get("triage_errors", {}).get(self.rev, 0) >= 3:
+                text += " After deploying the worker fix, an eligible retry can clear the blocked attempt. " + retry
+            else:
+                text += f" After deploying the worker fix, {remaining} of 3 attempts remain; add `ready` to resume without resetting them."
+        if action in ("operational", "investigate"):
+            if self.state.get("pr"):
+                text += (f" {remaining} of 3 attempts remain; readiness does not reset attempts. For {pr}, rerun the affected CI after setup is fixed, or use "
+                         f"[Independent review]({repo}/actions/workflows/independent-review.yml) dispatch with PR number "
+                         f"{self.state['pr']} and `retry` enabled for a review infrastructure failure; then "
+                         f"[Issue worker]({workflow}) dispatch with issue {self.number} reconciles the existing PR.")
+            else:
+                if not remaining or self.state.get("triage_errors", {}).get(self.rev, 0) >= 3:
+                    text += " An attempt/triage limit is reached; supply material new information with renewed `ready`, or explicitly reset the budget after fixing the cause."
+                else:
+                    text += f" After resolution, {remaining} of 3 attempts remain; add `ready` and use [Issue worker]({workflow}) dispatch with issue {self.number} if its event was missed."
+            text += " " + retry
+            if not remaining:
+                text += " No attempts remain. Material new information with renewed `ready` is another supported option; relabeling or reopening alone cannot reset the budget."
+        return text
+
+    def save(self, status, message, action=None):
         if status not in STATES:
             raise ValueError("Unknown issue state")
+        action = action or {"triage": "active", "needs-information": "answer", "ready": "authorize",
+                            "in-progress": "active", "blocked": "investigate", "done": "done"}[status]
+        guidance = self.next_step(action)
         candidate = dict(self.state)
         if "clarifications" in candidate:
             candidate["clarifications"] = copy.deepcopy(candidate["clarifications"])
@@ -176,16 +237,22 @@ class Worker:
                                 "after_comment": max((c["id"] for c in self.comments
                                                       if c["user"]["type"] != "Bot"), default=0)})
         validate_clarifications(candidate.get("clarifications", []))
-        candidate.update(status=status, message=message[:16000], run=self.run_url)
+        candidate.update(status=status, message=message[:16000], run=self.run_url, next_step=action)
+        unchanged = (self.comment_id and {k: v for k, v in candidate.items() if k != "run"}
+                     == {k: v for k, v in self.persisted_state.items() if k != "run"})
+        if unchanged:
+            candidate["run"] = self.persisted_state["run"]
         body = MARKER + json.dumps(candidate, sort_keys=True) + "\n-->\n" + message[:16000]
-        body += f"\n\nState: **{status}** · [worker run]({self.run_url})"
+        body += f"\n\nState: **{status}** · [worker run]({candidate['run']})\n\n### Next step\n\n{guidance}"
         if len(body) > 60000:
             raise RuntimeError("Durable issue state exceeded size limit")
-        if self.comment_id:
-            self.client.api("PATCH", f"/issues/comments/{self.comment_id}", {"body": body})
-        else:
-            self.comment_id = self.client.api("POST", self.path + "/comments", {"body": body})["id"]
+        if not unchanged:
+            if self.comment_id:
+                self.client.api("PATCH", f"/issues/comments/{self.comment_id}", {"body": body})
+            else:
+                self.comment_id = self.client.api("POST", self.path + "/comments", {"body": body})["id"]
         self.state = candidate
+        self.persisted_state = copy.deepcopy(candidate)
         # Only touch lifecycle labels, preserving labels applied by the owner.
         for label in STATES:
             if label == status:
@@ -254,7 +321,7 @@ class Worker:
         ready = "ready" in {label["name"] for label in self.issue["labels"]}
         if self.state.get("repair_revision") != self.rev or retry:
             if not (ready or retry):
-                self.save("blocked", "Repair needs authorization for this issue revision. Apply `ready` or an eligible `/rootprint retry`.")
+                self.save("blocked", "Repair needs authorization for this issue revision.", "authorize")
                 return False
             self.state["repair_revision"] = self.rev
             self.save("in-progress", "Authorized bounded repairs on the existing worker PR; owner still merges manually.")
@@ -266,13 +333,13 @@ class Worker:
             return False
         attempts = self.state["attempts"].get(self.rev, 0)
         if attempts >= 3:
-            self.save("blocked", "Three attempts exhausted for this issue revision. Supply new information and ready, or an eligible `/rootprint retry`.")
+            self.save("blocked", "Three attempts exhausted for this issue revision.", "exhausted")
             return False
         self.state["attempts"][self.rev] = attempts + 1
         self.state["repair"] = {"key": key, "head": pr["head"]["sha"], "base": pr["base"]["sha"],
                                 "revision": self.rev, "attempt": attempts + 1, "stage": "reserved", "run": self.run_url}
         self.state.setdefault("runs", []).append({"revision": self.rev, "attempt": attempts + 1, "url": self.run_url})
-        self.save("in-progress", f"Repairing PR #{pr['number']}, head `{pr['head']['sha']}`; attempt {attempts + 1}/3.")
+        self.save("in-progress", f"Repairing PR #{pr['number']}, head `{pr['head']['sha']}`; attempt {attempts + 1}/3.", "repair")
         return True
 
     def check_pr(self, number):
@@ -280,10 +347,11 @@ class Worker:
         if pr.get("merged"):
             self.save("done", f"Merged {pr['html_url']}; outcome recorded for this issue.")
         elif pr["state"] == "closed":
-            self.save("blocked", f"{pr['html_url']} was closed without merging. Resolve its disposition before retrying.")
+            self.save("blocked", f"{pr['html_url']} was closed without merging.", "closed")
         else:
             if not self.authorize_repair(pr):
                 return
+            failure_action = "operational"
             try:
                 if self.state.get("repair", {}).get("pending"):
                     self.recover_repair(pr)
@@ -291,6 +359,7 @@ class Worker:
                 evidence = repair_checks(self.reader, pr, self.reviewer_app)
                 key = repair_fingerprint(evidence)
                 if evidence["stage"] == "repair":
+                    failure_action = "investigate"
                     self.repair_pr(pr, evidence, key)
                 elif self.state.get("pr_status") != [evidence["head"], evidence["base"], evidence["stage"], evidence.get("task")]:
                     # An identical ready/waiting stage must not rewrite the ledger
@@ -298,36 +367,51 @@ class Worker:
                     self.state["pr_status"] = [evidence["head"], evidence["base"], evidence["stage"], evidence.get("task")]
                     message = ("Ready for owner's manual rebase merge; current-head CI and independent review passed."
                                if evidence["stage"] == "ready" else "Waiting for fresh required CI and independent review.")
-                    self.save("in-progress", f"PR: {pr['html_url']}\n\n{message}")
+                    self.save("in-progress", f"PR: {pr['html_url']}\n\n{message}",
+                              "merge" if evidence["stage"] == "ready" else "checks")
             except Exception as error:
                 # A state-save response can be lost too. Recover the durable record
                 # before recording failure, rather than erasing a pending publication.
                 self.state, self.comment_id = load_state(list(self.client.pages(self.path + "/comments")), self.bot)
+                self.persisted_state = copy.deepcopy(self.state)
                 repair = self.state.get("repair", {})
                 if not repair.get("pending"):
                     repair["stage"] = "blocked"
-                detail = str(error)[:500] if type(error) in (ValueError, RuntimeError, ApiError, TimeoutError) else type(error).__name__
-                message = f"Repair blocked ({type(error).__name__}): {detail}. No merge requested; inspect this run or use an eligible retry."
-                if self.state.get("message") != message:
-                    self.save("blocked", message)
+                detail = str(error)[:500] if type(error) in (ValueError, RuntimeError, ApiError, TimeoutError, WorkerPlanError, PhaseError) else type(error).__name__
+                message = f"Repair blocked ({type(error).__name__}): {detail}. No merge requested."
+                action = "worker-fix" if isinstance(error, WorkerPlanError) else (
+                    "operational" if isinstance(error, (PhaseError, ApiError)) else failure_action)
+                self.save("blocked", message, action)
 
     def develop(self, sandbox, context, triage):
         """The same plan/implement/complete verification path for initial work and repairs."""
         context["triage"] = triage
+        if triage["kind"] == "maintenance":
+            main = "openspec/specs/automated-maintenance/spec.md"
+            context["maintenance_contract"] = (main if (ROOT / main).is_file() else
+                "openspec/changes/bootstrap-rootprint-ecosystem/specs/automated-maintenance/spec.md")
         plan = phase(sandbox, "plan", context, self.deadline)
         if plan["status"] != "ready":
             self.pause_phase(plan)
             return None
-        contract = safe_path(plan["contract"])
+        try:
+            contract = safe_path(plan["contract"])
+        except ValueError:
+            raise WorkerPlanError("Plan omitted a valid OpenSpec contract") from None
         if plan["kind"] != triage["kind"]:
-            raise ValueError("Plan changed issue classification; clarify requirements before implementation")
+            raise WorkerPlanError("Plan changed issue classification; clarify requirements before implementation")
         if not contract.startswith("openspec/"):
-            raise ValueError("Plan must reference an OpenSpec contract")
-        self.check(sandbox, "test -f " + shlex.quote(contract))
+            raise WorkerPlanError("Plan must reference an OpenSpec contract")
+        if plan["kind"] == "maintenance" and contract != context["maintenance_contract"]:
+            raise WorkerPlanError("Documentation plan must use the worker-selected maintenance process contract")
+        try:
+            self.check(sandbox, "test -f " + shlex.quote(contract))
+        except RuntimeError:
+            raise WorkerPlanError("Plan's OpenSpec contract is unavailable in the sandbox") from None
         evidence = f"Contract/plan: `{contract}`.\n"
         if plan["kind"] == "bug":
             if not plan["regression"].strip():
-                raise ValueError("Bug plan omitted runnable regression evidence")
+                raise WorkerPlanError("Bug plan omitted runnable regression evidence")
             code, output, truncated = sandbox.run(plan["regression"])
             if not 1 <= code <= 125 or truncated:
                 raise RuntimeError("Regression check did not fail normally before implementation or its evidence was truncated")
@@ -335,18 +419,18 @@ class Worker:
         elif plan["kind"] == "feature":
             planned = sandbox.changes()
             if not any(c["path"].startswith("openspec/changes/") and c["content"] for c in planned):
-                raise ValueError("Feature plan did not produce OpenSpec artifacts")
+                raise WorkerPlanError("Feature plan did not produce OpenSpec artifacts")
             if not re.fullmatch(r"openspec/changes/[a-z0-9-]+/tasks\.md", contract):
-                raise ValueError("Feature contract must identify its change's tasks.md")
+                raise WorkerPlanError("Feature contract must identify its change's tasks.md")
             folder = contract.removesuffix("/tasks.md")
             self.check(sandbox, " && ".join("test -f " + shlex.quote(folder + "/" + name)
                                            for name in ("proposal.md", "design.md", "tasks.md"))
                        + " && test -d " + shlex.quote(folder + "/specs")
                        + " && node_modules/.bin/openspec validate " + shlex.quote(folder.split("/")[-1]) + " --strict")
-        elif plan["kind"] != "maintenance" or "repair" not in context:
-            raise ValueError("Maintenance classification is restricted to non-code repair acceptance")
+        elif plan["kind"] != "maintenance":
+            raise WorkerPlanError("Unknown work classification")
         elif not plan["regression"].strip():
-            raise ValueError("Non-code repair plan omitted its runnable acceptance check")
+            raise WorkerPlanError("Documentation maintenance plan omitted its runnable acceptance check")
         context["plan"] = plan
         for name in ("implement", "complete"):
             result = phase(sandbox, name, context, self.deadline)
@@ -357,6 +441,11 @@ class Worker:
                 self.check(sandbox, plan["regression"])
             self.verify(sandbox)
             context["verification"] = "Regression/acceptance (if applicable), python3 scripts/check.py, and python3 scripts/package_check.py passed."
+        if plan["kind"] == "maintenance":
+            try:
+                maintenance_changes(sandbox.changes())
+            except ValueError as error:
+                raise WorkerPlanError(str(error)) from None
         return result, evidence + "\n" + context["verification"]
 
     def pause_phase(self, result):
@@ -388,10 +477,6 @@ class Worker:
                 return
             result, verification = developed
             exported = sandbox.changes()
-            if context["plan"]["kind"] == "maintenance" and any(
-                    not (c["path"].endswith((".md", ".txt", ".rst")) or c["path"].endswith("/.openspec.yaml"))
-                    for c in exported):
-                raise ValueError("Non-code maintenance repair changed executable/configuration source; classify code work as bug or feature")
             self.assert_repair_current(pr, key)
             commit = self.client.api("GET", "/git/commits/" + pr["head"]["sha"])
             tree = self.make_tree(exported, commit["tree"]["sha"])
@@ -447,7 +532,7 @@ class Worker:
         del repair["pending"]
         self.state.pop("pr_status", None)
         self.save("in-progress", f"Published repair `{candidate}` on PR #{pr['number']}. Waiting for fresh CI/review and owner manual merge.\n\n"
-                  + repair.get("summary", ""))
+                  + repair.get("summary", ""), "checks")
 
     def open_pr(self):
         branch = self.state["branch"]
@@ -473,7 +558,7 @@ class Worker:
                         "Requires current-head CI and independent automated review. Owner merges manually.",
             })
         self.state["pr"] = pr["number"]
-        self.save("in-progress", f"Prepared {pr['html_url']}. Waiting for required checks and the owner's manual merge.")
+        self.save("in-progress", f"Prepared {pr['html_url']}. Waiting for required checks and the owner's manual merge.", "checks")
 
     def publish(self, changes, report, evidence):
         changes = validate_changes(changes)
@@ -507,7 +592,7 @@ class Worker:
         attempts = self.state["attempts"].get(self.rev, 0)
         if attempts >= 3:
             if self.state.get("status") != "blocked":
-                self.save("blocked", "Three attempts exhausted for this issue revision. Supply new information or an authorized `/rootprint retry`.")
+                self.save("blocked", "Three attempts exhausted for this issue revision.", "exhausted")
             return
         if self.state.get("triage_revision") == self.rev and not ready:
             return
@@ -535,7 +620,7 @@ class Worker:
                     self.save(status, triage["summary"] + duplicates)
                     return
                 if not ready:
-                    self.save("triage", triage["summary"] + "\n\nOwner: apply `ready` to authorize an implementation attempt.")
+                    self.save("triage", triage["summary"], "authorize")
                     return
                 self.check(sandbox, "git reset --hard " + sandbox.base + " && git clean -fd")
                 developed = self.develop(sandbox, context, triage)
@@ -546,15 +631,16 @@ class Worker:
                 current = self.client.api("GET", self.path)
                 comments = list(self.client.pages(self.path + "/comments"))
                 if current["state"] != "open" or revision(current, comments) != self.rev:
-                    self.save("blocked", "Issue changed or closed during implementation; result was not published. Reapply ready after triage.")
+                    self.save("blocked", "Issue changed or closed during implementation; result was not published. Confirm scope and reopen the issue if work should continue.", "authorize")
                     return
                 self.publish(sandbox.changes(), result, evidence)
         except Exception as error:
             # Never copy provider/process exception bodies, environment, or secret-bearing logs into GitHub.
             kind = type(error).__name__
-            detail = str(error)[:500] if type(error) in (RuntimeError, ValueError, TimeoutError, ApiError) else kind
-            self.save("blocked", f"Worker attempt stopped ({kind}): {detail}. No merge was requested. "
-                      "Inspect the linked run and configuration; supply new information or use `/rootprint retry` if eligible.")
+            detail = str(error)[:500] if type(error) in (RuntimeError, ValueError, TimeoutError, ApiError, WorkerPlanError, PhaseError) else kind
+            action = "worker-fix" if isinstance(error, WorkerPlanError) else (
+                "operational" if isinstance(error, (PhaseError, ApiError)) else "investigate")
+            self.save("blocked", f"Worker attempt stopped ({kind}): {detail}. No merge was requested.", action)
             raise RuntimeError("Worker attempt stopped; diagnostics recorded on its issue") from None
 
     def check(self, sandbox, script):

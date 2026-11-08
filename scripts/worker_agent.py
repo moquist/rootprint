@@ -15,6 +15,14 @@ MODEL = "openai/gpt-6.1-sol"
 MAX_CONTEXT = 90000
 
 
+class PhaseError(RuntimeError):
+    """Trusted provider/runtime diagnostic, without raw process logs."""
+
+
+class WorkerPlanError(ValueError):
+    """A deterministic plan/scope defect needs a worker fix, not an unchanged retry."""
+
+
 def config(sandbox, result):
     policy = (ROOT / "automation/worker-policy.md").read_text(encoding="utf-8")
     return {
@@ -90,5 +98,8 @@ def phase(sandbox, name, context, deadline):
                                      stdout=log, stderr=log, timeout=remaining)
         # Provider/runtime logs can contain sensitive data. Never echo them into issue comments or Actions logs.
         if process.returncode or not result.is_file():
-            raise RuntimeError(f"OpenCode {name} phase failed or did not submit a structured report")
-        return validate_report(json.loads(result.read_text(encoding="utf-8")))
+            raise PhaseError(f"OpenCode {name} phase failed or did not submit a structured report")
+        try:
+            return validate_report(json.loads(result.read_text(encoding="utf-8")))
+        except ValueError:
+            raise WorkerPlanError("OpenCode submitted an invalid structured phase report") from None

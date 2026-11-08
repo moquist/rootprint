@@ -136,6 +136,41 @@ class RepairSandbox(FakeSandbox):
 
 class RepairFlow(unittest.TestCase):
     @patch("issue_worker.Sandbox", RepairSandbox)
+    def test_both_maintenance_routes_validate_final_documentation_paths_and_modes(self):
+        contract = "openspec/changes/bootstrap-rootprint-ecosystem/specs/automated-maintenance/spec.md"
+        allowed = ["README.md", "github-automation-setup-instructions.md", "packages/python/README.md",
+                   "packages/typescript/README.md", "docs/new.md", "docs/guide.txt", "docs/guide.rst"]
+        forbidden = ["parser.py", "scripts/test_parser.py", "package.json", ".github/workflows/ci.yml",
+                     "AGENTS.md", "automation/worker-policy.md", ".opencode/agents/helper.md",
+                     "openspec/specs/example/spec.md", "openspec/changes/example/.openspec.yaml",
+                     "docs/AGENTS.md", "docs/.opencode/instructions.md", "docs/code.py"]
+        for repair in (False, True):
+            for path, mode in [(p, "100644") for p in allowed + forbidden] + [("README.md", "100755")]:
+                with self.subTest(repair=repair, path=path, mode=mode):
+                    repo = Repository() if repair else FakeGitHub(ready=True)
+                    if repair:
+                        repo.initialize()
+                    changes = []
+
+                    def model(sandbox, name, context, deadline):
+                        if name == "complete":  # A late completion edit must not bypass the final guard.
+                            changes.append({"path": path, "mode": mode, "content": "YQ=="})
+                        return report("complete" if name in ("implement", "complete") else "ready",
+                                      kind="maintenance", contract=contract, regression="python3 acceptance.py")
+
+                    with patch("issue_worker.phase", side_effect=model), \
+                            patch.object(RepairSandbox, "changes", side_effect=lambda: copy.deepcopy(changes)):
+                        try:
+                            Worker(repo, "worker[bot]", 7, reviewer_app=123).execute()
+                        except RuntimeError:
+                            if path in allowed and mode == "100644":
+                                raise
+                    accepted = path in allowed and mode == "100644"
+                    self.assertEqual(bool(repo.created if repair else repo.prs), accepted)
+                    if not accepted:
+                        self.assertEqual(repo.state()["next_step"], "worker-fix")
+
+    @patch("issue_worker.Sandbox", RepairSandbox)
     def test_repair_clarification_survives_restart_and_reaches_every_phase(self):
         repo = Repository()
         worker = repo.initialize()
@@ -345,6 +380,7 @@ class RepairFlow(unittest.TestCase):
         repo.review_failure(success=True)
         repo.worker().execute()
         self.assertIn("Ready for owner's manual rebase merge", repo.state()["message"])
+        self.assertEqual(repo.state()["next_step"], "merge")
         state_writes = len([c for c in repo.calls if c[:2] == ("PATCH", "/issues/comments/100")])
         repo.checks[1]["id"] += 100  # A fresh equivalent approval must not create an endless ledger/review loop.
         repo.worker().execute()
@@ -354,6 +390,26 @@ class RepairFlow(unittest.TestCase):
         repo.pr.update(state="closed", merged=True)
         repo.worker().execute()
         self.assertEqual(repo.state()["status"], "done")
+        self.assertEqual(repo.state()["next_step"], "done")
+
+    def test_repair_operational_and_closed_pr_guidance_uses_supported_workflows(self):
+        repo = Repository()
+        repo.initialize()
+        repo.review_failure(kind="infrastructure")
+        with patch("issue_worker.phase") as model:
+            repo.worker().execute()
+        self.assertFalse(model.called)
+        self.assertEqual(repo.state()["next_step"], "operational")
+        footer = repo.comments[0]["body"].rsplit("### Next step\n\n", 1)[1]
+        self.assertIn("independent-review.yml", footer)
+        self.assertIn("PR number 9 and `retry` enabled", footer)
+        self.assertIn("issue-worker.yml", footer)
+        self.assertIn("issue 7", footer)
+        self.assertIn("/pull/9", footer)
+        repo.pr["state"] = "closed"
+        repo.worker().execute()
+        self.assertEqual(repo.state()["next_step"], "closed")
+        self.assertNotIn("replacement PR", repo.state()["message"])
 
     @patch("issue_worker.Sandbox", RepairSandbox)
     def test_lost_commit_ref_and_final_state_responses_recover_without_model(self):
@@ -435,8 +491,9 @@ class RepairFlow(unittest.TestCase):
         for code_change in (False, True):
             repo = Repository()
             repo.initialize()
+            contract = "openspec/changes/bootstrap-rootprint-ecosystem/specs/automated-maintenance/spec.md"
             phases = [report(kind="maintenance", regression="python3 acceptance.py"),
-                      report(kind="maintenance", regression="python3 acceptance.py"),
+                      report(kind="maintenance", contract=contract, regression="python3 acceptance.py"),
                       report("complete", kind="maintenance"), report("complete", kind="maintenance")]
             change = {"path": "parser.py" if code_change else "README.md", "mode": "100644",
                       "content": base64.b64encode(b"fixed documentation").decode()}

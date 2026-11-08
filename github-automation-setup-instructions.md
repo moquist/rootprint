@@ -155,6 +155,17 @@ builds a credential-free container and checks isolation, the OpenCode/MCP
 connection, and offline baseline tests before supplying worker credentials.
 GitHub App/API access and real OpenAI model access require live verification.
 
+Documentation-only requests and context-specific **Next step** issue prompts are
+implemented locally, pending controlled hosted acceptance. The worker chooses its
+maintenance process contract and runnable post-edit acceptance; owners need not
+supply OpenSpec paths or invent code regressions for prose edits. Code, policy,
+configuration and normative requirement changes retain the bug/feature route.
+See [documentation scope and lifecycle action table](docs/issue-worker.md#documentation-only-requests-and-issue-prompts).
+For example: answer a needs-information question here, then add `ready` once scope
+is confirmed; lifecycle-label cleanup is automatic. An invalid internal plan needs
+a worker fix before retrying. Pending checks mean wait; passing current-head `ci`
+and `independent-review` mean review the linked PR and use **Rebase and merge**.
+
 The intended flow is:
 
 ```text

@@ -65,6 +65,53 @@ reopening, edits, labels, and non-bot comments. Reconciliation runs every 30 min
 (GitHub may delay scheduled jobs). It also monitors worker PRs for current-head
 failures and deduplicates default-branch CI failures into one tracking issue.
 
+## Documentation-only requests and issue prompts
+
+The locally implemented documentation route and prompts await controlled hosted
+acceptance. A wording-only issue can use `maintenance` in both initial work and
+repair. The worker selects the existing main `automated-maintenance` process spec,
+or bootstrap's delta while main is absent; the owner supplies prose requirements,
+not internal contract paths. Planning records targets, intended edits and a runnable
+post-edit acceptance command in `regression`. It need not fail before the edit or
+create a new spec delta. Separate plan/implement/complete phases and integrated/
+packaged checks still run. Example issue: “In README.md, explain that calculatedAt
+is metadata; keep runtime behavior unchanged.” The worker can accept it with a
+short Python assertion over the requested wording after editing.
+
+Maintenance can change root `README.md`, `github-automation-setup-instructions.md`,
+the Python/TypeScript package `README.md` files, and `.md`/`.txt`/`.rst` prose under
+`docs/`. Every file must remain regular and non-executable. Code, tests, package/
+workflow configuration, `AGENTS.md`, `automation/` policies, `.opencode/` instructions
+and normative OpenSpec artifacts are excluded. The complete exported diff is
+checked after completion, for both initial and repair publication. Behavior or
+requirement changes need their proper bug/feature route even when phrased as prose.
+
+Each state update has a separate **Next step** section, for example “Add the
+`ready` label to authorize an attempt” or “Request a worker planning/scope fix …
+before retrying.” It is trusted procedural guidance, not a retained question or
+an owner answer. It cannot grant authorization or reset attempt/review budgets.
+
+| Stage/reason | Owner action in the issue |
+| --- | --- |
+| Active triage/implementation/repair | Wait and follow the run link; no extra readiness action. |
+| Needs information | Answer the focused question here. Replies are re-triaged; add `ready` once scope is confirmed. Label cleanup is automatic. |
+| Actionable, waiting for authorization | Add `ready`; it consumes an attempt without resetting the budget. |
+| Setup/provider/permission/dependency/runner blocker | Resolve the named prerequisite first; follow diagnostics, then resume through the indicated workflow. |
+| Invalid worker plan or documentation scope | Request a worker fix before retrying; do not supply internal paths or relabel unchanged defective work. |
+| Investigated failure, budget remaining | Resolve its cause, then add `ready` for initial work; use the linked run/workflow if an event was missed. |
+| Attempts or triage failure limit reached | Material new information with renewed readiness, or an explicit `/rootprint retry` by a write/maintain/admin collaborator. Reopening/relabeling alone cannot reset the limit. |
+| PR gates pending | Wait for current-head `ci` and `independent-review` on the linked PR. |
+| PR check infrastructure failure | Fix setup first; rerun affected CI or dispatch Independent review with the PR number and `retry` enabled, then reconcile Issue worker with the issue number. Review retry limits still apply. |
+| PR gates pass | Review the linked PR and use **Rebase and merge**; no new `ready`. |
+| PR closed without merge | Resolve its disposition, e.g. reopen it; no automatic replacement PR. |
+| Merged/done | No further implementation action for this work. |
+
+Identical status/reason/action saves reuse the one comment without rewriting it
+merely for a new run link. Guidance counts against the 60,000-character state limit.
+If comment access or capacity prevents publication, the worker fails with Actions
+diagnostics; it does not claim to have delivered a prompt. Keep required CI/review
+gates and manual merging in place throughout rollout.
+
 ## Durable state and retries
 
 One App-authored issue comment stores the current state, revision hashes, attempt
