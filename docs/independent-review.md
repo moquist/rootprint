@@ -109,6 +109,43 @@ information or a new revision creates a new context. A review normally needs
 code/evidence changes to resolve blocking findings, rather than repeated requests
 for a different model verdict.
 
+### Find and resolve a failed review
+
+In the PR's checks, open **independent-review → Details**. This is the reviewer
+App's required gate; **review (number)** is the Actions job that ran orchestration.
+The check summary explains the failure. The locally implemented diagnostic fix
+also puts infrastructure/input failures in the Actions run's **Summary** and emits
+an error annotation in its review step. It awaits owner deployment and hosted
+acceptance; existing runs retain their original output.
+
+Provider failures identify the HTTP status in the check title and job diagnostic:
+
+| Diagnostic | Next step |
+| --- | --- |
+| OpenAI HTTP 429 | Check the API project's credits/billing and rate limits. Status alone cannot distinguish exhausted quota from rate limiting. Fix quota/billing or wait for the limit to clear, then explicitly retry. |
+| OpenAI HTTP 401/403 | Check the configured API key, project permissions and model access before retrying. |
+| OpenAI HTTP 5xx | Check provider service status and wait for recovery before retrying. |
+| Other OpenAI HTTP error | Investigate model/request configuration and provider availability first. |
+
+For a resolved provider problem on an open PR (replace `26` with its number):
+
+```sh
+gh workflow run independent-review.yml --repo moquist/rootprint -f pr=26 -f retry=true
+gh pr checks 26 --repo moquist/rootprint --required
+```
+
+Retries still share the three-attempt exact-context limit. The report contains only
+trusted status/category/action text, PR/run links and the supported retry command;
+provider bodies, reason strings, headers, request contents and credentials are not
+published. Infrastructure/input failures are not code-review rejections and never
+approve a PR. Fix actual review findings through code/evidence changes instead.
+
+A later successful dispatched review replaces the required App check on the PR's
+head, but GitHub can still display an older red Actions job from that head. That old
+job is historical, not evidence that the new review failed. Inspect the latest
+`independent-review` details and `gh pr checks --required` to identify current gates;
+do not use an old run's banner or the aggregate `UNSTABLE` label as the verdict.
+
 ## Trust boundary and limits
 
 ### Repair diagnostics contract
