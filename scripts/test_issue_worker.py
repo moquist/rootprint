@@ -2,6 +2,7 @@
 
 import base64
 import copy
+import io
 import json
 import os
 from pathlib import Path
@@ -10,8 +11,9 @@ import time
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
+from urllib.error import HTTPError
 
-from issue_worker import ApiError, MARKER, Worker, WorkerPlanError, discover, load_state, revision, track_ci_failure
+from issue_worker import ApiError, GitHub, MARKER, Worker, WorkerPlanError, discover, load_state, revision, track_ci_failure
 from worker_agent import MODEL, PhaseError, config, phase, preflight
 from worker_sandbox import MAX_PATCH, mcp_response, validate_changes
 
@@ -20,6 +22,32 @@ def report(status="ready", **fields):
     return {"status": status, "kind": "bug", "summary": "Existing contract violation",
             "contract": "openspec/changes/bootstrap-rootprint-ecosystem/specs/json-merkle/spec.md",
             "regression": "python3 regression.py", "duplicates": [], **fields}
+
+
+class GitHubTransport(unittest.TestCase):
+    def test_http_errors_close_before_sanitized_api_error_propagates(self):
+        # Existing automated-maintenance credential isolation/diagnostics boundary.
+        for status in (403, 404, 422, 503):
+            with self.subTest(status=status):
+                response = HTTPError("https://api.github.com/repos/owner/repo", status,
+                                     "synthetic-untrusted-reason", {"x-test": "synthetic-untrusted-header"},
+                                     io.BytesIO(b"synthetic-untrusted-body"))
+                try:
+                    with patch("issue_worker.urlopen", side_effect=response), \
+                            patch.object(response, "read", side_effect=AssertionError("Error body must not be read")) as read:
+                        try:
+                            GitHub("synthetic-not-a-real-token", "owner/repo").request("GET", "/repos/owner/repo")
+                        except ApiError as error:
+                            self.assertEqual(error.status, status)
+                            self.assertEqual(str(error), f"GitHub API request failed (HTTP {status})")
+                            self.assertTrue(error.__suppress_context__)
+                            read.assert_not_called()
+                            self.assertTrue(response.closed, "GitHub.request leaves HTTP error responses open")
+                        else:
+                            self.fail("Expected sanitized ApiError")
+                finally:
+                    # Cleanup must follow the closure assertion, including on the failing baseline.
+                    response.close()
 
 
 class FakeGitHub:
