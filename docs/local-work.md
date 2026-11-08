@@ -1,5 +1,57 @@
 # Local work ledger
 
+## Hosted acceptance — 2026-11-08 (issue #29 / PR #30)
+
+- Owner confirmed the controlled test worked. Independently inspected fresh issue
+  https://github.com/moquist/rootprint/issues/29, comment history/timeline, worker
+  runs, complete PR diff, exact-head App checks and owner merge. Prepared local
+  `docs/worker-hosted-acceptance` from merged main `f14dfc8`; no remote mutation,
+  workflow dispatch, model request, push or merge was performed by this session.
+- Question run https://github.com/moquist/rootprint/actions/runs/42440662665 asked
+  for confirmation of exact calculatedAt wording/placement. The durable App comment
+  https://github.com/moquist/rootprint/issues/29#issuecomment-6716441657 retains the
+  complete question, original revision/run and human cursor. The owner's short
+  https://github.com/moquist/rootprint/issues/29#issuecomment-6716465117 reply was
+  “Your suggestion is great; proceed as proposed.” at 03:01:22 UTC. No self-contained
+  restatement or repeated clarification was needed.
+- GraphQL issue timeline confirms owner `ready` at 03:01:28, before reservation
+  at 03:02:49. The worker automatically removed needs-information/ready and set
+  in-progress. Run https://github.com/moquist/rootprint/actions/runs/42440933523
+  completed sandbox preparation/isolation and coordinated the sole implementation
+  attempt. Durable state records exactly one attempt; no retry or reset was used.
+- https://github.com/moquist/rootprint/pull/30 contains only the confirmed README
+  paragraph and completion evidence in the work ledger. It uses bootstrap's existing
+  maintenance process contract and post-edit acceptance with integrated/package
+  checks, rather than an invented requirement delta or failing-before code test.
+  README usage/setup/all-tests blocks and runtime/protocol/package bytes are intact.
+- Exact head `a6be4e0cba017b76b2a3b64198a1cc2ddf2cb73d` passed Actions App `15368`
+  `ci` checks `128611023725` / `128611047152` (runs `42441233582` / `42441236595`)
+  and reviewer App `5631539` check `128610759974`, run
+  https://github.com/moquist/rootprint/actions/runs/42441236614. API confirms owner
+  `moquist` merged at 03:14:46 UTC as `f14dfc8`; issue closed one second later.
+- App comment edit history verifies Next step prompts for initial active triage
+  (02:58:36), clarification/readiness/automatic label cleanup (02:59:01), active
+  implementation (03:02:49), linked-PR CI/review waiting (03:05:32 and 03:06:47),
+  and owner Rebase and merge with no new ready label (03:08:28). Run
+  https://github.com/moquist/rootprint/actions/runs/42441353262 reconciled passing
+  gates before merge. Only one state comment and one human answer exist.
+- Clarification task 3.2 is now evidenced (5/5 complete). OpenSpec archived the
+  no-delta bug fix at `openspec/changes/archive/2026-11-07-preserve-worker-clarification-context/`
+  (CLI local-date prefix); no main spec sync was needed. Documentation task 4.2
+  remains open (6/7): its successful
+  intake/clarification/active/check/manual-merge path is evidenced, but no hosted
+  blocked-prompt example was exercised. At inspection the closed issue's worker
+  state still said in-progress/merge, awaiting a later done reconciliation; this
+  is not recorded as done acceptance. Local blocked/done mocks are not hosted proof.
+  Do not mutate #23, bypass gates, close unrelated bootstrap/repair tasks or claim
+  full autonomous maintenance/activation from this successful documentation run.
+- Acceptance bookkeeping verification: credential-free
+  `env -i HOME=/tmp/opencode PATH="$PWD/.venv/bin:$PATH" python3 scripts/check.py`
+  passed both five-test port suites, 66 script checks, Ruff and all 10 remaining
+  strict active changes after archive. Whitespace checks pass. Only this evidence,
+  the verified clarification checkbox and its archive location changed; no runtime,
+  README usage/test command, permission, package or protocol edit was needed.
+
 ## Completion handoff — 2026-11-08 (issue #29)
 
 - Documentation-only completion under
