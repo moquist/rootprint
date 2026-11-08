@@ -96,6 +96,7 @@ an owner answer. It cannot grant authorization or reset attempt/review budgets.
 | Active triage/implementation/repair | Wait and follow the run link; no extra readiness action. |
 | Needs information | Answer the focused question here. Replies are re-triaged; add `ready` once scope is confirmed. Label cleanup is automatic. |
 | Actionable, waiting for authorization | Add `ready`; it consumes an attempt without resetting the budget. |
+| Likely duplicate or already fulfilled | Review the linked existing work; close this report if confirmed, or explain the material difference for re-triage. An unchanged report does not need readiness or a budget reset. |
 | Setup/provider/permission/dependency/runner blocker | Resolve the named prerequisite first; follow diagnostics, then resume through the indicated workflow. |
 | Invalid worker plan or documentation scope | Request a worker fix before retrying; do not supply internal paths or relabel unchanged defective work. |
 | Investigated failure, budget remaining | Resolve its cause, then add `ready` for initial work; use the linked run/workflow if an event was missed. |

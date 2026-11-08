@@ -417,6 +417,35 @@ class Lifecycle(unittest.TestCase):
         self.assertIn("context exceeds the worker input limit", client.state()["message"])
 
     @patch("issue_worker.Sandbox", FakeSandbox)
+    def test_duplicate_disposition_does_not_recommend_ready_or_budget_reset(self):
+        # worker-issue-guidance: actual blocking reason/action (hosted issue #31).
+        for route in ("initial", "repair-pause", "unanswered-question"):
+            client = FakeGitHub()
+            worker = self.worker(client)
+            result = report("needs-information" if route == "unanswered-question" else "blocked",
+                            duplicates=[29], summary="Which behavior differs?" if route == "unanswered-question" else "Already fulfilled by #29")
+            if route == "initial":
+                with patch("issue_worker.phase", return_value=result) as model:
+                    worker.execute()
+                    self.worker(client).execute()
+                self.assertEqual(model.call_count, 1)
+            else:
+                worker.state["repair"] = {"stage": "reserved"}
+                worker.state["pr"] = 9
+                worker.pause_phase(result)
+            footer = client.comments[0]["body"].rsplit("### Next step\n\n", 1)[1]
+            if route == "unanswered-question":
+                self.assertEqual(client.state()["next_step"], "answer")
+                self.assertIn("Answer the focused question", footer)
+            else:
+                self.assertNotIn("add `ready`", footer, "Duplicate disposition must not authorize another attempt")
+                self.assertNotIn("/rootprint retry", footer)
+                self.assertIn("duplicate", footer)
+                self.assertIn("#29", client.state()["message"])
+            self.assertFalse(client.prs)
+            self.assertEqual(client.state()["attempts"], {})
+
+    @patch("issue_worker.Sandbox", FakeSandbox)
     def test_missing_information_and_duplicates_pause_without_repeat_jobs(self):
         for answer, expected in [(report("needs-information", summary="Which input fails?"), "needs-information"),
                                  (report(duplicates=[3], summary="Same reproduction as #3"), "blocked")]:
@@ -426,7 +455,7 @@ class Lifecycle(unittest.TestCase):
                 self.worker(client).execute()
             self.assertEqual(model.call_count, 1)
             self.assertEqual(client.state()["status"], expected)
-            self.assertEqual(client.state()["next_step"], "answer" if expected == "needs-information" else "investigate")
+            self.assertEqual(client.state()["next_step"], "answer" if expected == "needs-information" else "duplicate")
             self.assertEqual(len(client.comments), 1)
             self.assertIn(answer["summary"], client.comments[0]["body"])
 
