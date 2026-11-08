@@ -12,7 +12,7 @@
 ## 3. Verification and deployment evidence
 
 - [x] 3.1 Run focused lifecycle/repair tests, credential-free `python3 scripts/check.py`, strict OpenSpec validation and `git diff --check`; inspect the complete affected flow/diff and record actual results before committing intended changes. Verify primary README usage/setup/all-tests commands remain current and no protocol/package/dependency/permission or unrelated activation requirement changed.
-- [ ] 3.2 After owner deployment through current-head CI and independent review, verify a fresh controlled issue asks a question, receives a short answer, waits for `ready`, and produces its linked PR without repeating the resolved question. Record issue/run/PR evidence and unchanged retry/manual-merge gates. Leave this task open until exercised; do not mutate #23 or treat its owner-managed workaround as deployed-fix acceptance.
+- [x] 3.2 After owner deployment through current-head CI and independent review, verify a fresh controlled issue asks a question, receives a short answer, waits for `ready`, and produces its linked PR without repeating the resolved question. Record issue/run/PR evidence and unchanged retry/manual-merge gates. Leave this task open until exercised; do not mutate #23 or treat its owner-managed workaround as deployed-fix acceptance.
 
 ## Workflow follow-up
 
