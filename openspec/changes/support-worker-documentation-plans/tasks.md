@@ -17,7 +17,7 @@
 ## 4. Verification and rollout
 
 - [x] 4.1 Run credential-free focused lifecycle/repair checks, `python3 scripts/check.py`, `python3 scripts/package_check.py`, applicable real sandbox/OpenCode runtime checks, strict OpenSpec validation and `git diff --check`. Inspect the complete affected flow/diff, verify primary README usage/setup/all-tests examples remain current, and record actual commands/results and remaining hosted gates before committing intended changes.
-- [ ] 4.2 After owner publication through current-head CI and independent review and manual rebase merge, exercise controlled documentation intake and inspect published issue prompts for readiness, active work, linked-PR checks and manual approval. Verify clarification/blocked prompt examples in controlled contexts, using self-contained requirements/answers if the separate context fix is not deployed. Record actual issue/run/PR evidence; do not claim hosted acceptance from local mocks or mutate #23 during this planning task.
+- [x] 4.2 After owner publication through current-head CI and independent review and manual rebase merge, exercise controlled documentation intake and inspect published issue prompts for readiness, active work, linked-PR checks and manual approval. Verify clarification/blocked prompt examples in controlled contexts, using self-contained requirements/answers if the separate context fix is not deployed. Record actual issue/run/PR evidence; do not claim hosted acceptance from local mocks or mutate #23 during this planning task.
 
 ## Workflow follow-up
 

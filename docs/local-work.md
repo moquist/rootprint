@@ -1,5 +1,51 @@
 # Local work ledger
 
+## Hosted acceptance complete — 2026-11-08 (documentation guidance)
+
+- Owner rebase-merged #32 at 03:59:04 UTC as `5c2e9de`; fetched origin/main
+  matches it. PR head `4fa49be` passed required ci (runs `42444755702` and
+  `42444774651`) and independent review (run `42444774701`). Prepared local
+  `docs/documentation-hosted-acceptance` from that merged base.
+- Posted the authorized acceptance follow-up on #31, referencing deployed #32:
+  https://github.com/moquist/rootprint/issues/31#issuecomment-6716989579.
+  It explicitly requested only re-triage of the corrected duplicate footer;
+  no ready label or budget reset was applied and no document edit was requested.
+- Successful hosted `work (31)` job `128621622337` processed that follow-up:
+  https://github.com/moquist/rootprint/actions/runs/42444876338/job/128621622337.
+  The run was triggered before merge, but this job's default-branch checkout log
+  contains full deployed commit `5c2e9dea244b1c05b71f34d5c255db0c8aa78c7f`.
+  The parent workflow also had an unrelated #23 job still running at inspection;
+  only this completed #31 job's success is asserted here.
+- The duplicate comment-triggered run `42444993818` was cancelled before any
+  work-job steps; initial gh watch output transiently showed failure, but final
+  API metadata says cancelled/empty steps, not provider or implementation failure.
+  No unchanged retry was made. The already-running successful job produced the
+  durable state and prompt; that is the accepted evidence, not the cancelled job.
+- Verified App comment https://github.com/moquist/rootprint/issues/31#issuecomment-6716851011:
+  `status=blocked`, `next_step=duplicate`, `attempts={}`, no PR. Its trusted footer
+  says review existing issues, close if confirmed duplicate/already fulfilled, or
+  explain the material difference for re-triage; it contains no ready-label,
+  budget-reset or unknown-worker-failure instruction. The evidence-check helper's
+  first substring check falsely matched ready inside already; corrected it to a
+  word-boundary check before accepting the result or closing anything.
+- Closed #31 as not planned with a duplicate-of-#29 / implemented-by-#30 evidence
+  comment only after verification. No replacement PR or implementation was created.
+  Together with #29/#30's clarification, ready gating, active/check/manual-merge
+  prompts and run `42442032752`'s final done reconciliation, documentation task 4.2
+  is now evidenced and complete (7/7). This supersedes the earlier open-task notes.
+  Clarification is already archived at 5/5. No #23 mutation, agent push, merge,
+  permission change or speculative provider/runner retry was performed here.
+- Keep documentation artifacts ready for archive/sync once the recorded bootstrap
+  baseline prerequisite is satisfied. Do not silently sync/archive unrelated
+  bootstrap or dependent protocol changes, or claim their activation/repair/release
+  acceptance from these successful documentation runs.
+- OpenSpec reports `all_done`, 7/7. Credential-free
+  `env -i HOME=/tmp/opencode PATH="$PWD/.venv/bin:$PATH" python3 scripts/check.py`
+  passed both five-test port suites, 67 script checks, Ruff and all 10 active strict
+  changes; whitespace checks pass. Only this evidence and the verified task checkbox
+  changed. Owner can publish this bookkeeping branch with `git push -u origin HEAD`
+  and open its PR; fresh CI/review and manual rebase merge still apply.
+
 ## Latest session handoff — 2026-11-08 (blocked-prompt acceptance found a defect)
 
 - Verified #29's post-merge reconciliation: successful run
