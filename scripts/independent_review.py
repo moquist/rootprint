@@ -39,6 +39,18 @@ SCHEMA = {
 }
 
 
+class ProviderError(RuntimeError):
+    def __init__(self, status):
+        self.status = status
+        super().__init__(f"OpenAI review request failed (HTTP {status})")
+
+
+class ReviewFailure(RuntimeError):
+    def __init__(self, detail, summary):
+        super().__init__(detail)
+        self.summary = summary
+
+
 def sha(value):
     if not isinstance(value, str) or not re.fullmatch(r"[a-f0-9]{40}", value):
         raise ValueError("Invalid Git object SHA")
@@ -228,7 +240,10 @@ def ask_model(task_data):
         with urlopen(request, timeout=600) as response:
             body = response.read(1024 * 1024 + 1)
     except HTTPError as error:
-        raise RuntimeError(f"OpenAI review request failed (HTTP {error.code})") from None
+        # Status only: provider bodies/reasons/headers can contain sensitive input.
+        status = error.code
+        error.close()
+        raise ProviderError(status) from None
     if len(body) > 1024 * 1024:
         raise ValueError("Review response exceeds size limit")
     response = json.loads(body)
@@ -268,13 +283,13 @@ def repair_task(data):
     return digest(value)
 
 
-def complete(client, check_id, conclusion, summary, outcome=None):
+def complete(client, check_id, conclusion, summary, outcome=None, title=None):
     text = compact(outcome or {"schema": "rootprint-review-outcome-v1", "kind": "infrastructure"})
     if len(text.encode()) > 60000:
         raise ValueError("Structured review diagnostics exceed check output limit")
     client.api("PATCH", f"/check-runs/{check_id}", {
         "status": "completed", "conclusion": conclusion,
-        "output": {"title": "Independent review " + ("passed" if conclusion == "success" else "blocked"),
+        "output": {"title": title or "Independent review " + ("passed" if conclusion == "success" else "blocked"),
                    "summary": summary, "text": text},
     })
 
@@ -330,15 +345,35 @@ def review(client, reader, bot, number, retry=False):
                   "result": result})
     except Exception as error:
         # Never publish request bodies, environment values, provider responses, or credential-bearing tracebacks.
-        detail = str(error)[:500] if type(error) in (ValueError, RuntimeError, ApiError) else type(error).__name__
+        detail = str(error)[:500] if type(error) in (ValueError, RuntimeError, ApiError, ProviderError) else type(error).__name__
+        next_step = "Investigate the reported prerequisite or review-input problem before requesting another review."
+        title = "Independent review blocked: infrastructure/input failure"
+        if isinstance(error, ProviderError):
+            title = f"Independent review blocked: OpenAI HTTP {error.status}"
+            if error.status == 429:
+                next_step = ("Check OpenAI project credits/billing and rate limits. HTTP 429 can mean exhausted quota "
+                             "or rate limiting; the status alone does not distinguish them. Resolve quota/billing "
+                             "or wait for the rate limit to clear before retrying.")
+            elif error.status in (401, 403):
+                next_step = "Check the configured OpenAI API key, project permissions and model access before retrying."
+            elif 500 <= error.status <= 599:
+                next_step = "Check OpenAI service status; wait for the provider failure to clear before retrying."
+            else:
+                next_step = "Check the OpenAI model/request configuration and provider availability before retrying."
+        retry_command = f"gh workflow run independent-review.yml --repo {client.repo} -f pr={number} -f retry=true"
+        if isinstance(error, ProviderError):
+            next_step += f" After resolution, use `{retry_command}` (at most three attempts per exact review context)."
+        summary = (f"## {title}\n\n{detail}.\n\nThis is not a code-review rejection; no approval was produced."
+                   f"\n\n### Next step\n\n{next_step}\n\n[PR #{number}](https://github.com/{client.repo}/pull/{number})"
+                   f" · [Review run]({run_url}).")
         if check is None:
             # Even failures collecting metadata must replace any earlier success
             # on the same head with a blocking check, without leaking raw input.
             key = "rootprint-review-error:" + digest([head, initial["base"]["sha"], initial["title"], initial.get("body"), detail])
             history = sorted(existing_checks(client, head, bot), key=lambda c: c["id"])
             check = history[-1] if history and history[-1].get("external_id") == key else start(key)
-        complete(client, check["id"], "failure", "Independent review did not approve: " + detail + f".\n\n[Review run]({run_url}).")
-        raise RuntimeError("Independent review stopped; blocking check recorded") from None
+        complete(client, check["id"], "failure", summary, title=title)
+        raise ReviewFailure(f"Independent review blocked: {detail}. Next step: {next_step}", summary) from None
 
 
 def discover(client, event, number=0):
@@ -374,6 +409,18 @@ def main():
     client, bot = app_client("REVIEWER")
     try:
         review(client, reader, bot, args.pr, args.retry)
+    except ReviewFailure as error:
+        # Emit at the CLI boundary so synthetic review failures in tests do not
+        # create Actions annotations or overwrite the actual job's summary.
+        message = str(error).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+        print("::error title=Independent review blocked::" + message if os.environ.get("GITHUB_ACTIONS") == "true" else str(error))
+        if os.environ.get("GITHUB_STEP_SUMMARY"):
+            try:
+                with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as summary:
+                    summary.write(error.summary + "\n")
+            except OSError:
+                print("Could not write the job summary; see the review failure diagnostic above.")
+        raise SystemExit(1) from None
     finally:
         client.request("DELETE", "/installation/token")
 

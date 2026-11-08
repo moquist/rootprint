@@ -1,5 +1,60 @@
 # Local work ledger
 
+## Latest session handoff — 2026-11-08 (review-provider diagnostics)
+
+- PR #26's head `631d68d` passed all current-head CI jobs. Its original reviewer
+  check `128598798741` failed with `OpenAI review request failed (HTTP 429)` and
+  outcome `infrastructure`: https://github.com/moquist/rootprint/actions/runs/42437281533.
+  After the owner added credits/dispatched retry, check `128600125131` approved
+  the same head at 02:16 UTC: https://github.com/moquist/rootprint/actions/runs/42437710907.
+  `gh pr checks 26 --required` confirmed all required checks passed; GitHub still
+  showed the old Actions job red and aggregate `UNSTABLE`. There was no fresh
+  reviewer failure. Owner rebase-merged #26 at 02:18 UTC as `1ab2eac`.
+- Created independent `fix/review-failure-diagnostics` on fetched main and advanced
+  it to the merged clarification fix. The documentation implementation is preserved
+  separately at `477d9e2` on `feat/worker-documentation-plans`; refresh that branch
+  against merged main before its separate publication. No agent push/merge occurred.
+- This is an observability conformance fix under bootstrap's bounded/observable
+  automation and the repair contract's distinguishable infrastructure diagnostics,
+  preserving untrusted-input/credential isolation; no requirement delta is invented.
+  Traced provider transport, check completion, CLI/hosted entrypoints, retry caching,
+  worker repair consumers and workflow attribution. HTTP status reached the App
+  check but the Actions exception hid it behind `blocking check recorded`.
+- Permanent credential-free failing-before regression:
+  `env -i HOME=/tmp/opencode PATH="$PWD/.venv/bin:$PATH" PYTHONPATH="$PWD/scripts" python3 -m unittest test_independent_review.ProviderAndIdentity.test_provider_http_failure_is_visible_in_actions_error_summary_and_check`.
+  Before the fix: `FAILED (failures=1)`, `Actions failure hides the provider HTTP
+  status`; captured Actions output was empty for a simulated HTTP 429. No provider
+  request or GitHub write was made.
+- Implemented status-only provider diagnostics in the check title/summary and at the
+  shared standalone/hosted CLI boundary: an Actions error annotation and job Summary
+  show HTTP status, infrastructure/input category, next action, PR/run links and a
+  bounded explicit retry command for provider failures. HTTP 429 guidance explains
+  quota/billing versus rate limits without inventing a subtype. HTTP 401/403, 5xx
+  and other statuses have fixed configuration/service guidance. Existing outcome
+  schema, failure gates, App permissions and three-attempt limit are unchanged.
+- Initial tests passed but exposed Python 3.14 ResourceWarnings from unclosed HTTP
+  error responses; those warnings could include the raw reason. Fixed the shared
+  provider boundary to close errors without reading/logging bodies, reasons or
+  headers. Tests assert closure, absence of synthetic secrets, escaped Actions
+  commands, honest job-summary write failure and token revocation on CLI exit.
+  Reporting runs only at the CLI boundary, so fake review failures inside ordinary
+  CI tests do not create misleading annotations or replace the real job summary.
+- Final credential-free focused command:
+  `env -i HOME=/tmp/opencode PATH="$PWD/.venv/bin:$PATH" PYTHONPATH="$PWD/scripts" PYTHONWARNINGS=error::ResourceWarning python3 -m unittest test_independent_review test_pr_repair test_review_budget test_review_compact`
+  passes 34 checks without warnings. Credential-free
+  `env -i HOME=/tmp/opencode PATH="$PWD/.venv/bin:$PATH" python3 scripts/check.py`
+  passes both five-test port suites, 56 script checks, Ruff and all 11 strict changes.
+  `git diff --check` passes. Full diff/callers reviewed; primary README examples and
+  setup/all-tests commands remain current. No package, protocol, vector, dependency,
+  workflow or permission change was needed. No live model request or remote write
+  occurred during diagnosis/verification.
+- Locally verified reporting fix awaits owner publication, exact-head CI and
+  independent review/manual rebase merge, then hosted diagnostic acceptance. Next
+  owner command: `git push -u origin fix/review-failure-diagnostics`. New reports
+  activate only after deployment; original runs retain their old output. #26 is
+  merged, but its separate controlled clarification acceptance task remains open;
+  no unrelated bootstrap/repair acceptance or activation requirement was completed.
+
 ## Latest session handoff — 2026-11-07 (clarification-context implementation)
 
 - Applying `preserve-worker-clarification-context` on separate branch

@@ -6,10 +6,13 @@ import hashlib
 import io
 import json
 import os
+from pathlib import Path
 from contextlib import redirect_stdout
+import tempfile
 from types import SimpleNamespace
 import unittest
 from unittest.mock import MagicMock, patch
+from urllib.error import HTTPError
 
 import independent_review as reviewer
 from issue_worker import app_client
@@ -301,6 +304,85 @@ class ReviewGate(unittest.TestCase):
 
 
 class ProviderAndIdentity(unittest.TestCase):
+    def test_http_categories_remain_infrastructure_and_do_not_publish_provider_data(self):
+        for status, expected in ((401, "API key"), (403, "model access"), (429, "credits/billing"),
+                                 (503, "service status"), (400, "model/request configuration")):
+            with self.subTest(status=status):
+                repo = Repository()
+                secret = "synthetic-private-request-and-response-data"
+                error = HTTPError("https://api.openai.com/v1/responses", status, secret,
+                                  {"x-request-id": secret}, io.BytesIO(secret.encode()))
+                with patch.dict(os.environ, {"OPENAI_API_KEY": secret}), \
+                        patch("independent_review.urlopen", side_effect=error), \
+                        self.assertRaises(RuntimeError) as stopped:
+                    reviewer.review(repo, repo, "reviewer[bot]", 9)
+                self.assertIn(f"HTTP {status}", str(stopped.exception))
+                self.assertTrue(error.closed)
+                summary = repo.checks[-1]["output"]["summary"]
+                self.assertIn(expected, summary)
+                self.assertIn("three attempts", summary)
+                self.assertNotIn(secret, str(stopped.exception) + json.dumps(repo.checks))
+                self.assertEqual(json.loads(repo.checks[-1]["output"]["text"])["kind"], "infrastructure")
+                self.assertEqual(repo.checks[-1]["conclusion"], "failure")
+
+    def test_provider_http_failure_is_visible_in_actions_error_summary_and_check(self):
+        # Existing bounded/observable maintenance and actionable infrastructure diagnostics.
+        repo = Repository()
+        repo.request = MagicMock()
+        secret = "synthetic-secret-must-not-be-published"
+        error = HTTPError("https://api.openai.com/v1/responses", 429, secret,
+                          {"x-request-id": secret}, io.BytesIO(json.dumps({"error": {"message": secret}}).encode()))
+        output = io.StringIO()
+        with tempfile.TemporaryDirectory() as folder:
+            summary = Path(folder) / "summary.md"
+            env = {"GITHUB_ACTIONS": "true", "GITHUB_STEP_SUMMARY": str(summary),
+                   "GITHUB_REPOSITORY": repo.repo, "GITHUB_RUN_ID": "123", "GITHUB_TOKEN": secret,
+                   "OPENAI_API_KEY": secret, "REVIEWER_APP_ID": "22", "REVIEWER_APP_PRIVATE_KEY": secret}
+            with patch.dict(os.environ, env, clear=True), patch("sys.argv", ["reviewer", "run", "--pr", "9"]), \
+                    patch("independent_review.GitHub", return_value=repo), \
+                    patch("independent_review.app_client", return_value=(repo, "reviewer[bot]")), \
+                    patch("independent_review.urlopen", side_effect=error), redirect_stdout(output), \
+                    self.assertRaises((RuntimeError, SystemExit)):
+                reviewer.main()
+            self.assertIn("HTTP 429", output.getvalue(), "Actions failure hides the provider HTTP status")
+            self.assertIn("::error", output.getvalue())
+            self.assertTrue(summary.is_file())
+            text = summary.read_text()
+            self.assertIn("HTTP 429", text)
+            self.assertIn("billing", text)
+            self.assertIn("rate", text)
+            self.assertIn("-f pr=9 -f retry=true", text)
+            self.assertIn("/actions/runs/123", text)
+            self.assertIn("/pull/9", text)
+            self.assertNotIn(secret, text + output.getvalue() + json.dumps(repo.checks))
+        self.assertIn("HTTP 429", repo.checks[-1]["output"]["title"])
+        self.assertTrue(error.closed)
+        self.assertEqual(repo.checks[-1]["conclusion"], "failure")
+        self.assertEqual(json.loads(repo.checks[-1]["output"]["text"])["kind"], "infrastructure")
+        repo.request.assert_called_once_with("DELETE", "/installation/token")
+
+    def test_cli_annotation_is_escaped_and_survives_unwritable_job_summary(self):
+        repo = Repository()
+        repo.request = MagicMock()
+        output = io.StringIO()
+        with tempfile.TemporaryDirectory() as folder:
+            env = {"GITHUB_ACTIONS": "true", "GITHUB_STEP_SUMMARY": str(Path(folder) / "missing" / "summary.md"),
+                   "GITHUB_TOKEN": "synthetic-read-token", "GITHUB_REPOSITORY": repo.repo,
+                   "REVIEWER_APP_ID": "22", "REVIEWER_APP_PRIVATE_KEY": "synthetic-app-key"}
+            failure = reviewer.ReviewFailure("100% unavailable\n::warning::not a new command\r", "Bounded diagnostic")
+            with patch.dict(os.environ, env, clear=True), patch("sys.argv", ["reviewer", "run", "--pr", "9"]), \
+                    patch("independent_review.GitHub", return_value=repo), \
+                    patch("independent_review.app_client", return_value=(repo, "reviewer[bot]")), \
+                    patch("independent_review.review", side_effect=failure), redirect_stdout(output), \
+                    self.assertRaises(SystemExit) as stopped:
+                reviewer.main()
+            self.assertEqual(stopped.exception.code, 1)
+            self.assertIn("100%25 unavailable%0A::warning::not a new command%0D", output.getvalue())
+            self.assertNotIn("\n::warning", output.getvalue())
+            self.assertIn("Could not write the job summary", output.getvalue())
+            self.assertNotIn("synthetic-read-token", output.getvalue())
+        repo.request.assert_called_once_with("DELETE", "/installation/token")
+
     def test_model_transport_is_stateless_no_tools_and_does_not_expose_app_credentials(self):
         repo = Repository()
         repo.head_files["logo.png"] = b"image bytes must not reach provider"
