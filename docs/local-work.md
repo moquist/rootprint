@@ -1,5 +1,37 @@
 # Local work ledger
 
+## Review correction — 2026-11-08 (PR #33 observation records)
+
+- Reviewer App `5631539` check `128623126424` rejected head `63b417a` as
+  `kind=rejection`, not a provider failure:
+  https://github.com/moquist/rootprint/actions/runs/42445375601.
+  The reviewer correctly could not independently assess task 4.2 from implementation-
+  authored prose and external links alone. Its tool-free context does not fetch
+  linked observations. Do not retry unchanged code for a different verdict.
+- Added `docs/worker-guidance-acceptance-evidence.json` on the same PR branch with
+  re-fetched, selected GitHub job metadata, literal timestamped main-checkout and
+  git-log output, complete App-authored #31 comment body/identities, and issue
+  closure projection. Observation times and source commands are included. The
+  event head `f14dfc8` and actual checkout `5c2e9de` remain distinct in the record;
+  the SHA is now directly supported by the git log command/output, not just a
+  claim that some log text contains it. Credentials, auth cleanup, provider data
+  and signed download URLs are omitted. Task 4.2 remains complete based on these
+  supplied observation records, pending a fresh independent review of this head.
+- `python3 /tmp/opencode/verify_worker_guidance_evidence.py` compared every selected
+  job/step/API field and the complete reconstructed comment body against freshly
+  fetched GitHub data. It verified literal log lines and adjacency of git log's
+  command/output, bot/App identity, linked run, empty attempts/no PR, corrected
+  footer, closure projection and the under-16,000-byte snapshot ceiling. Source
+  commands in the artifact allow independent re-fetching; the helper executes only
+  fixed read-only API paths, never commands embedded in the evidence.
+- Credential-free `env -i HOME=/tmp/opencode PATH="$PWD/.venv/bin:$PATH" python3 scripts/check.py`
+  passes both five-test port suites, 67 script checks, Ruff and all 10 strict active
+  changes. Whitespace checks pass. Only the evidence snapshot and ledger references
+  changed; runtime, normative specs, README commands, dependencies and permissions
+  are unchanged. No remote write, model retry or push was performed for this fix.
+  Owner next runs `git push origin docs/documentation-hosted-acceptance` to update
+  existing PR #33; require fresh current-head CI/review before manual rebase merge.
+
 ## Hosted acceptance complete — 2026-11-08 (documentation guidance)
 
 - Owner rebase-merged #32 at 03:59:04 UTC as `5c2e9de`; fetched origin/main
@@ -28,6 +60,9 @@
   budget-reset or unknown-worker-failure instruction. The evidence-check helper's
   first substring check falsely matched ready inside already; corrected it to a
   word-boundary check before accepting the result or closing anything.
+  Selected source records are now supplied in
+  [worker-guidance-acceptance-evidence.json](worker-guidance-acceptance-evidence.json)
+  so a tool-free reviewer can assess those observations without following links.
 - Closed #31 as not planned with a duplicate-of-#29 / implemented-by-#30 evidence
   comment only after verification. No replacement PR or implementation was created.
   Together with #29/#30's clarification, ready gating, active/check/manual-merge

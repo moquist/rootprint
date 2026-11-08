@@ -1,0 +1,98 @@
+{
+  "repository": "moquist/rootprint",
+  "observation_window_utc": {
+    "started_at": "2026-11-08T04:08:41Z",
+    "completed_at": "2026-11-08T04:10:24Z"
+  },
+  "provenance": "Selected GitHub REST response fields and literal checkout log lines re-fetched for PR #33 review. These are dated observation records, not a live service audit. No provider/request bodies, environment dumps, credentials or signed log-download URLs are included. Comment body_lines preserves the complete response body split on LF, without elision or rewritten task text.",
+  "job": {
+    "source_command": "gh api repos/moquist/rootprint/actions/jobs/128621622337",
+    "selection": "Retain job identity, status/times and the initial checkout and coordination steps. The event head_sha is not the checkout SHA; the checkout log below records the exact main revision used by this job.",
+    "response": {
+      "id": 128621622337,
+      "run_id": 42444876338,
+      "run_attempt": 1,
+      "workflow_name": "Issue worker",
+      "name": "work (31)",
+      "head_sha": "f14dfc82d22b9d8be28889998855be85e3ae09a2",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-08T03:59:12Z",
+      "completed_at": "2026-11-08T04:00:56Z",
+      "html_url": "https://github.com/moquist/rootprint/actions/runs/42444876338/job/128621622337",
+      "steps": [
+        {
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-08T03:59:13Z",
+          "completed_at": "2026-11-08T03:59:14Z"
+        },
+        {
+          "name": "Coordinate issue work (trusted default-branch code only)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-08T04:00:27Z",
+          "completed_at": "2026-11-08T04:00:53Z"
+        }
+      ]
+    }
+  },
+  "checkout_log": {
+    "source_command": "gh api --allow-escape-sequences repos/moquist/rootprint/actions/jobs/128621622337/logs",
+    "selection": "Retain the timestamped main checkout command/output and subsequent git log -1 --format=%H command/output verbatim. Omit other steps and auth cleanup. No log command is executed by this evidence record.",
+    "lines": [
+      "2026-11-08T03:59:14.6648310Z ##[group]Checking out the ref",
+      "2026-11-08T03:59:14.6650339Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main",
+      "2026-11-08T03:59:14.6788511Z Switched to a new branch 'main'",
+      "2026-11-08T03:59:14.6792530Z branch 'main' set up to track 'origin/main'.",
+      "2026-11-08T03:59:14.6909387Z [command]/usr/bin/git log -1 --format=%H",
+      "2026-11-08T03:59:14.6932017Z 5c2e9dea244b1c05b71f34d5c255db0c8aa78c7f"
+    ]
+  },
+  "worker_comment": {
+    "source_command": "gh api repos/moquist/rootprint/issues/comments/6716851011",
+    "selection": "Retain comment identity/times, GitHub bot user and performed_via_github_app identity, and the full body as LF-separated body_lines. The JSON state is body_lines[1]; its complete keys show empty attempts and no pr field. The actual procedural footer follows the Next step heading.",
+    "response": {
+      "id": 6716851011,
+      "html_url": "https://github.com/moquist/rootprint/issues/31#issuecomment-6716851011",
+      "created_at": "2026-11-08T03:44:01Z",
+      "updated_at": "2026-11-08T04:00:50Z",
+      "user": {
+        "id": 353023469,
+        "login": "rootprint-implementation-worker[bot]",
+        "type": "Bot"
+      },
+      "performed_via_github_app": {
+        "id": 5631382,
+        "slug": "rootprint-implementation-worker"
+      },
+      "body_lines": [
+        "<!-- rootprint-worker-state",
+        "{\"attempts\": {}, \"message\": \"Already fulfilled; duplicate of issue #29, reported completed by merged PR #30. Current README.md independently confirms the exact requested sentence appears once as a standalone paragraph after the introductory bullets and immediately before \\u201cSetup and run all tests.\\u201d The complete supplied human follow-up (6716989579, moquist) confirms no additional edit is requested. No source changes or implementation started; readiness is not requested. Next step: Review existing issue #29 and PR #30; close #31 referencing that work if confirmed duplicate, or explain a material difference for re-triage.\\n\\nLikely duplicates: #29\", \"next_step\": \"duplicate\", \"run\": \"https://github.com/moquist/rootprint/actions/runs/42444876338\", \"status\": \"blocked\", \"triage_errors\": {\"295d40706e28398ecfe688982bef7f8b22928a0f3ad0bafeef5484199df1ec57\": 1, \"f94247c06d19b54f914501028974c830833e73ea46a5f33074e1b6bc3609b71f\": 1}, \"triage_revision\": \"295d40706e28398ecfe688982bef7f8b22928a0f3ad0bafeef5484199df1ec57\"}",
+        "-->",
+        "Already fulfilled; duplicate of issue #29, reported completed by merged PR #30. Current README.md independently confirms the exact requested sentence appears once as a standalone paragraph after the introductory bullets and immediately before “Setup and run all tests.” The complete supplied human follow-up (6716989579, moquist) confirms no additional edit is requested. No source changes or implementation started; readiness is not requested. Next step: Review existing issue #29 and PR #30; close #31 referencing that work if confirmed duplicate, or explain a material difference for re-triage.",
+        "",
+        "Likely duplicates: #29",
+        "",
+        "State: **blocked** · [worker run](https://github.com/moquist/rootprint/actions/runs/42444876338)",
+        "",
+        "### Next step",
+        "",
+        "Review the existing issues linked above. If confirmed as duplicate or already fulfilled, close this report referencing that work. Otherwise explain the material difference here for re-triage; do not retry unchanged work."
+      ]
+    }
+  },
+  "issue_disposition": {
+    "source_command": "gh api repos/moquist/rootprint/issues/31",
+    "selection": "Retain issue number, closure status/time, URL and label names. Closure is separate from the worker's blocked duplicate disposition.",
+    "response": {
+      "number": 31,
+      "state": "closed",
+      "state_reason": "not_planned",
+      "closed_at": "2026-11-08T04:03:15Z",
+      "html_url": "https://github.com/moquist/rootprint/issues/31",
+      "labels": ["blocked"]
+    }
+  }
+}
