@@ -909,3 +909,101 @@
 - Setup references: `docs/issue-worker.md`, `docs/independent-review.md`,
   `github-automation-setup-instructions.md`, and active OpenSpec tasks. No scheduled
   local agent daemon is running. No publication is authorized by this ledger.
+
+## Issue #34 — plan phase: shared GitHub HTTP error cleanup
+
+- Existing contract: `openspec/changes/bootstrap-rootprint-ecosystem/specs/automated-maintenance/spec.md`
+  (Untrusted input and credential isolation, Bounded observable automation, and
+  Spec-driven agent contributions), plus the existing status-only `ApiError`
+  diagnostics boundary in `scripts/issue_worker.py`. This is a bug, not a new
+  requirement; no requirement delta or bootstrap task completion is appropriate.
+- Inspected the shared `GitHub.request`/`api`/`pages` flow and callers: App
+  authentication and token revocation, issue discovery/orchestration/publication,
+  repair check diagnostics and immutable source overlay, independent-review
+  metadata/context/check publishing and hosted entrypoint. All use the same
+  transport. Status-based handling (notably 404/422) must remain unchanged.
+  The separate OpenAI error boundary already captures status and closes errors;
+  that related #27 work is not a duplicate of this GitHub defect. Supplied
+  issues #31, #29, #23 and #12 do not overlap this repair.
+- Added permanent regression
+  `test_issue_worker.GitHubTransport.test_http_errors_close_before_sanitized_api_error_propagates`
+  in the existing integrated unittest discovery path. It mocks `issue_worker.urlopen`
+  with synthetic HTTPError responses for 403, 404, 422 and 503, checks exact
+  status-only text/status and suppressed transport context, forbids body reads,
+  and checks closure while catching ApiError, before unconditional fixture cleanup.
+- Failing-before command (repository root):
+  `PYTHONPATH=scripts python3 -m unittest test_issue_worker.GitHubTransport.test_http_errors_close_before_sanitized_api_error_propagates -v`.
+  Observed exit 1: four closure assertion failures, one for each status; all prior
+  sanitization/no-read assertions passed. Fixture cleanup still closes every error.
+  Production source remains unchanged in this phase.
+- Separate implementation plan: capture the HTTP status, close the HTTPError,
+  then raise the same `ApiError(status) from None` at the shared request boundary,
+  following the existing OpenAI cleanup pattern. Do not read error bodies or
+  publish reasons, headers, payloads or credentials. Leave success handling,
+  timeout, 8 MiB read limit, pagination, API operations and permissions unchanged.
+- Verification after implementation: rerun the regression, then
+  `PYTHONPATH=scripts python3 -m unittest test_issue_worker test_pr_repair test_independent_review`,
+  `python3 scripts/check.py`, `python3 scripts/package_check.py`, and
+  `git diff --check`. Inspect the full diff in completion and record actual results.
+  README usage/setup/all-tests commands remain valid and require no change;
+  neither port, shared vectors nor published rootprint-v1 bytes change.
+- No hosted acceptance is claimed. Later completion still requires fresh
+  current-head CI and independent review, with the PR left open for owner manual
+  merging. Do not create a deliberately broken commit for the proposed exercise.
+  Any subsequent same-PR repair must use genuine current-head diagnostics and a
+  coordinator reservation within the shared three-attempt budget. Bootstrap and
+  repair hosted-acceptance tasks remain incomplete without their own evidence.
+
+## Issue #34 — implementation phase: shared GitHub HTTP error cleanup
+
+- Applied the accepted plan above at `GitHub.request`: save the status, close the
+  HTTPError response, then raise the unchanged status-only `ApiError` from None.
+  Shared worker, repair and reviewer callers need no changes. Successful response
+  handling, timeout/read limits, permissions, package APIs and protocol bytes are
+  unchanged; README setup/usage/all-tests commands remain current.
+- Reconfirmed failing-before evidence in this sandbox: the permanent regression
+  failed its closure assertion for all four synthetic statuses before editing
+  production code. After the fix the same regression passed, including exact
+  sanitized text/status, suppressed transport context, and no error-body reads.
+- Verification passed: the plan's focused regression; worker/repair/reviewer
+  suites (60 tests); `python3 scripts/check.py` (5 TypeScript tests, 5 Python
+  tests, 68 script tests including integration, Ruff, and strict validation of
+  all 10 active OpenSpec changes); `python3 scripts/package_check.py` (both built
+  and installed distributions' CLI/API checks); and `git diff --check`.
+- Implementation is ready for the separate completion phase. No task checkboxes
+  or normative specifications changed. No commits, hosted operations, deliberately
+  broken exercise commit, publication, or merge were performed. Hosted CI and
+  independent review on the eventual latest PR head remain required, followed
+  by owner-controlled merging; bootstrap/repair hosted acceptance remains unverified.
+
+## Issue #34 — completion phase: verified shared transport fix
+
+- Reviewed the complete three-file diff against the accepted bug plan above and
+  the bootstrap automated-maintenance contract. The shared HTTPError handler
+  captures status, closes the response, and raises the same sanitized ApiError
+  with suppressed context. Worker, App authentication, repair and independent
+  reviewer callers retain their existing status-based behavior; success handling,
+  read limits and narrow API permissions are unchanged.
+- Re-ran the permanent regression successfully (one test with synthetic
+  403/404/422/503 subcases). It asserts closure before propagation cleanup and
+  fixture cleanup, exact status-only text/status, suppressed context and no body
+  reads. The plan and implementation entries retain the observed failing-before
+  evidence; no defect was reintroduced during completion.
+- Completion verification passed: focused regression;
+  `PYTHONPATH=scripts python3 -m unittest test_issue_worker test_pr_repair test_independent_review`
+  (60 tests); `python3 scripts/check.py` (5 TypeScript tests, 5 Python tests,
+  68 script tests, Ruff, all 10 active OpenSpec changes validated strictly);
+  `python3 scripts/package_check.py` (built/installed TypeScript and Python
+  CLI/API checks); and `git diff --check`. Existing informational archive
+  dependency notices do not prevent strict validation; no change was archived.
+- README usage/setup/all-tests commands remain current. No package source,
+  shared vectors, published protocol bytes, dependencies, permissions or
+  normative requirements changed. No OpenSpec task checkbox is newly justified:
+  bootstrap and repair hosted-acceptance tasks remain incomplete.
+- Local completion is not issue closure or hosted acceptance. The eventual
+  linked fix PR still needs fresh current-head CI and independent automated
+  review and must remain open for the owner's manual rebase merge. No remote
+  activation, PR creation, merge, publication, commit or deliberately broken
+  exercise commit was performed here. Any later controlled same-PR repair must
+  await genuine current-head diagnostics and coordinator reservation within the
+  existing shared three-attempt budget; this ledger does not authorize one.

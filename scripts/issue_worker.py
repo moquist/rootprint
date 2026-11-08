@@ -62,7 +62,9 @@ class GitHub:
             with urlopen(request, timeout=30) as response:
                 body = response.read(8 * 1024 * 1024 + 1)
         except HTTPError as error:
-            raise ApiError(error.code) from None
+            status = error.code
+            error.close()
+            raise ApiError(status) from None
         if len(body) > 8 * 1024 * 1024:
             raise ValueError("GitHub response exceeded limit")
         return json.loads(body) if body else None
