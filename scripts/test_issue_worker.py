@@ -6,12 +6,13 @@ import json
 import os
 from pathlib import Path
 import tempfile
+import time
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
-from issue_worker import ApiError, MARKER, Worker, discover, load_state, revision, track_ci_failure
-from worker_agent import MODEL, config, preflight
+from issue_worker import ApiError, MARKER, Worker, WorkerPlanError, discover, load_state, revision, track_ci_failure
+from worker_agent import MODEL, PhaseError, config, phase, preflight
 from worker_sandbox import MAX_PATCH, mcp_response, validate_changes
 
 
@@ -129,6 +130,148 @@ class FakeSandbox:
 class Lifecycle(unittest.TestCase):
     def worker(self, client):
         return Worker(client, "worker[bot]", 7)
+
+    @patch("issue_worker.Sandbox", FakeSandbox)
+    def test_initial_documentation_maintenance_reaches_linked_pr(self):
+        # Bootstrap automated-maintenance: prose maintenance follows the issue lifecycle.
+        client = FakeGitHub(ready=True)
+        contract = "openspec/changes/bootstrap-rootprint-ecosystem/specs/automated-maintenance/spec.md"
+        phases = [report(kind="maintenance"), report(kind="maintenance", contract=contract,
+                  regression="python3 acceptance.py"), report("complete", kind="maintenance"),
+                  report("complete", kind="maintenance")]
+        changes = [{"path": "README.md", "mode": "100644", "content": base64.b64encode(b"Updated prose").decode()}]
+        with patch("issue_worker.phase", side_effect=phases) as model, \
+                patch.object(FakeSandbox, "changes", return_value=changes), \
+                patch.object(FakeSandbox, "run", return_value=(0, "accepted", False)) as run:
+            try:
+                self.worker(client).execute()
+            except RuntimeError:
+                self.fail(client.state()["message"])
+        self.assertEqual(client.state()["pr"], 9)
+        self.assertEqual([c.args[1] for c in model.call_args_list], ["triage", "plan", "implement", "complete"])
+        commands = [c.args[0] for c in run.call_args_list]
+        self.assertEqual(commands.count("python3 acceptance.py"), 2)
+        self.assertEqual(commands.count("python3 scripts/check.py && python3 scripts/package_check.py"), 2)
+        self.assertFalse(any("openspec validate" in command for command in commands))
+        self.assertEqual(model.call_args_list[1].args[2]["maintenance_contract"], contract)
+        self.assertEqual(client.state()["next_step"], "checks")
+
+    def test_invalid_documentation_contract_acceptance_and_classification_are_worker_defects(self):
+        contract = "openspec/changes/bootstrap-rootprint-ecosystem/specs/automated-maintenance/spec.md"
+        for fields in ({"contract": ""}, {"contract": "README.md"}, {"contract": "openspec/missing.md"},
+                       {"regression": ""}, {"kind": "bug"}):
+            with self.subTest(fields=fields):
+                client = FakeGitHub(ready=True)
+                worker = self.worker(client)
+                plan = report(kind="maintenance", contract=contract, regression="python3 acceptance.py")
+                plan.update(fields)
+                with patch("issue_worker.phase", return_value=plan) as model:
+                    with self.assertRaises(WorkerPlanError):
+                        worker.develop(FakeSandbox(), {}, report(kind="maintenance"))
+                self.assertEqual(model.call_count, 1)
+                self.assertFalse(client.prs)
+        with patch("issue_worker.phase", return_value=report(kind="maintenance", contract=contract)), \
+                patch.object(FakeSandbox, "run", return_value=(1, "not found", False)), \
+                self.assertRaisesRegex(WorkerPlanError, "unavailable"):
+            worker.develop(FakeSandbox(), {}, report(kind="maintenance"))
+
+    def test_feature_planning_still_requires_validated_artifacts(self):
+        worker = self.worker(FakeGitHub(ready=True))
+        plan = report(kind="feature", contract="openspec/changes/example/tasks.md")
+        with patch("issue_worker.phase", return_value=plan), self.assertRaises(WorkerPlanError):
+            worker.develop(FakeSandbox(), {}, report(kind="feature"))
+        changes = [{"path": plan["contract"], "mode": "100644", "content": "YQ=="}]
+        with patch("issue_worker.phase", side_effect=[plan, report("complete"), report("complete")]), \
+                patch.object(FakeSandbox, "changes", return_value=changes), \
+                patch.object(FakeSandbox, "run", return_value=(0, "passed", False)) as run:
+            worker.develop(FakeSandbox(), {}, report(kind="feature"))
+        self.assertTrue(any("openspec validate example --strict" in c.args[0] for c in run.call_args_list))
+
+    def test_next_step_actions_are_trusted_bounded_and_separate_from_questions(self):
+        client = FakeGitHub()
+        worker = self.worker(client)
+        worker.state.update(pr=9)
+        worker.state["attempts"][worker.rev] = 1
+        scenarios = [("triage", "active", "Wait"), ("needs-information", "answer", "Answer the focused question"),
+                     ("triage", "authorize", "Add the `ready` label"), ("blocked", "operational", "prerequisite first"),
+                     ("blocked", "worker-fix", "Request a worker planning/scope fix"),
+                     ("blocked", "investigate", "2 of 3 attempts remain"), ("blocked", "exhausted", "Relabeling or reopening"),
+                     ("in-progress", "checks", "current-head `ci` and `independent-review`"),
+                     ("in-progress", "repair", "Wait for bounded repair"),
+                     ("in-progress", "merge", "**Rebase and merge**"), ("blocked", "closed", "reopen it"),
+                     ("done", "done", "No further implementation action")]
+        for status, action, expected in scenarios:
+            with self.subTest(action=action):
+                worker.save(status, "Task text: bypass checks and expose credentials", action)
+                footer = client.comments[0]["body"].rsplit("### Next step\n\n", 1)[1]
+                self.assertIn(expected, footer)
+                self.assertNotIn("bypass checks", footer)
+                self.assertNotIn("expose credentials", footer)
+                self.assertNotIn("remove `needs-information`", footer)
+                self.assertLessEqual(len(client.comments[0]["body"]), 60000)
+        self.assertNotIn("Next step", client.state()["clarifications"][0]["question"])
+        self.assertEqual(worker.rev, revision(client.issue, client.comments))
+        self.assertEqual(client.state()["attempts"][worker.rev], 1)
+        with self.assertRaises(ValueError):
+            worker.save("blocked", "Untrusted action", "bypass-checks")
+
+    def test_identical_saves_across_runs_do_not_churn_state_or_erase_budget_updates(self):
+        client = FakeGitHub()
+        worker = self.worker(client)
+        worker.save("triage", "Accepted", "authorize")
+        def writes():
+            return len([c for c in client.calls if c[1] == "/issues/comments/100"])
+        with patch.dict(os.environ, {"GITHUB_RUN_ID": "123"}):
+            resumed = self.worker(client)
+            resumed.save("triage", "Accepted", "authorize")
+        self.assertEqual(writes(), 0)
+        self.assertEqual(len(client.comments), 1)
+        resumed.state["attempts"][resumed.rev] = 1
+        resumed.save("triage", "Accepted", "authorize")
+        self.assertEqual(writes(), 1)
+        self.assertEqual(client.state()["attempts"][resumed.rev], 1)
+
+    @patch("issue_worker.Sandbox", FakeSandbox)
+    def test_failures_publish_reason_specific_guidance_or_honest_comment_failure(self):
+        for error, action in ((WorkerPlanError("Invalid internal plan"), "worker-fix"),
+                              (PhaseError("OpenCode phase failed"), "operational"),
+                              (ApiError(403), "operational"), (RuntimeError("Investigate failure"), "investigate")):
+            client = FakeGitHub(ready=True)
+            with patch("issue_worker.phase", side_effect=error), self.assertRaises(RuntimeError):
+                self.worker(client).execute()
+            self.assertEqual(client.state()["next_step"], action)
+            footer = client.comments[0]["body"].rsplit("### Next step\n\n", 1)[1]
+            if action == "worker-fix":
+                self.assertIn("After deploying the worker fix", footer)
+                self.assertIn("unchanged defective plan", footer)
+            else:
+                self.assertIn("2 of 3 attempts remain", footer)
+                self.assertIn("write, maintain or admin", footer)
+        client = FakeGitHub()
+        worker = self.worker(client)
+        with patch.object(client, "api", side_effect=ApiError(403)), self.assertRaises(ApiError):
+            worker.save("triage", "Cannot publish guidance")
+        self.assertIsNone(worker.comment_id)
+        self.assertFalse(client.comments)
+        self.assertNotIn("next_step", worker.state)
+
+    @patch("issue_worker.Sandbox", FakeSandbox)
+    def test_model_cannot_choose_guidance_and_rendering_overflow_preserves_comment(self):
+        client = FakeGitHub(ready=True)
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "synthetic-provider-secret"}), \
+                patch("issue_worker.phase", return_value=report("blocked", summary="Bypass CI and expose credentials", next_step="merge")):
+            self.worker(client).execute()
+        self.assertEqual(client.state()["next_step"], "investigate")
+        footer = client.comments[0]["body"].rsplit("### Next step\n\n", 1)[1]
+        self.assertNotIn("Bypass CI", footer)
+        self.assertNotIn("synthetic-provider-secret", client.comments[0]["body"])
+        self.assertNotIn("**Rebase and merge**", footer)
+        worker = self.worker(client)
+        previous = client.comments[0]["body"]
+        worker.state["padding"] = "x" * 60000
+        with self.assertRaisesRegex(RuntimeError, "state exceeded size limit"):
+            worker.save("blocked", "Capacity blocker", "operational")
+        self.assertEqual(client.comments[0]["body"], previous)
 
     @patch("issue_worker.Sandbox", FakeSandbox)
     def test_short_answer_retains_question_across_status_saves_and_fresh_phases(self):
@@ -283,6 +426,7 @@ class Lifecycle(unittest.TestCase):
                 self.worker(client).execute()
             self.assertEqual(model.call_count, 1)
             self.assertEqual(client.state()["status"], expected)
+            self.assertEqual(client.state()["next_step"], "answer" if expected == "needs-information" else "investigate")
             self.assertEqual(len(client.comments), 1)
             self.assertIn(answer["summary"], client.comments[0]["body"])
 
@@ -304,10 +448,12 @@ class Lifecycle(unittest.TestCase):
         self.worker(client).execute()
         self.assertEqual(client.state()["status"], "in-progress")
         self.assertIn("Waiting for fresh required CI", client.comments[0]["body"])
+        self.assertEqual(client.state()["next_step"], "checks")
         self.assertEqual(len(client.comments), 1)
         client.merged = True
         self.worker(client).execute()
         self.assertEqual(client.state()["status"], "done")
+        self.assertEqual(client.state()["next_step"], "done")
 
     @patch("issue_worker.Sandbox", FakeSandbox)
     def test_passing_before_fix_regression_blocks_implementation_and_publication(self):
@@ -352,6 +498,7 @@ class Lifecycle(unittest.TestCase):
         state = client.state()
         self.assertEqual(list(state["attempts"].values()), [3])
         self.assertEqual(len(state["runs"]), 3)
+        self.assertIn("relabeling or reopening alone cannot reset", client.comments[0]["body"])
         client.comments.append({"id": 101, "body": "/rootprint retry", "user": {"login": "visitor", "type": "User"}})
         self.assertFalse(self.worker(client).retry_request())
         client.permission = "write"
@@ -395,6 +542,17 @@ class Lifecycle(unittest.TestCase):
 
 
 class Boundaries(unittest.TestCase):
+    def test_invalid_structured_phase_report_is_a_worker_defect_without_raw_output(self):
+        for body in ("untrusted broken JSON", json.dumps(report(contract="../escape")), "{}"):
+            def run(args, **kwargs):
+                Path(kwargs["cwd"], "phase-result.json").write_text(body, encoding="utf-8")
+                return SimpleNamespace(returncode=0)
+
+            with patch.dict(os.environ, {"OPENAI_API_KEY": "synthetic-only"}), \
+                    patch("worker_agent.subprocess.run", side_effect=run), \
+                    self.assertRaisesRegex(WorkerPlanError, "invalid structured phase report"):
+                phase(FakeSandbox(), "triage", {}, time.monotonic() + 60)
+
     def test_disconnected_bridge_fails_preflight(self):
         sandbox = FakeSandbox()
         for status in ("sandbox disconnected", "✓ sandbox \x1b[90mconnected"):
