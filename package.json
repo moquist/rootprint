@@ -9,5 +9,5 @@
     "check": "npm run build && npm test"
   },
   "engines": {"node": ">=22"},
-  "devDependencies": {"@fission-ai/openspec": "1.16.0"}
+  "devDependencies": {"@fission-ai/openspec": "1.16.1"}
 }
